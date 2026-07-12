@@ -66,6 +66,7 @@ class WebviewApi:
         self.window = None
         self.render_thread = None
         self.preset_manager = PresetManager()
+        self.settings_path = os.path.expanduser("~/Library/Application Support/ABMM/settings.json")
 
     def set_window(self, window):
         """pywebviewのウィンドウインスタンスを紐づける"""
@@ -93,6 +94,19 @@ class WebviewApi:
 
     def start_model_download(self, tier):
         """非同期でモデルのダウンロードを開始する"""
+        import shutil
+        try:
+            total, used, free = shutil.disk_usage(self.model_manager.cache_dir)
+            free_mb = free / (1024 * 1024)
+            required_mb = self.model_manager.get_model_size_mb(tier)
+            if free_mb < required_mb + 100: # 100MBのマージン
+                return {
+                    "status": "error", 
+                    "message": f"ディスク空き容量が不足しています。必要: {required_mb:.1f}MB, 空き: {free_mb:.1f}MB"
+                }
+        except Exception as e:
+            print(f"[handlers] Disk space check failed: {e}")
+
         download_thread = threading.Thread(
             target=self._async_download_worker,
             args=(tier,),
@@ -339,6 +353,25 @@ class WebviewApi:
 
     def start_ollama_model_download(self, model_name):
         """非同期でOllamaのモデルダウンロードを開始する"""
+        import shutil
+        try:
+            total, used, free = shutil.disk_usage(os.path.expanduser("~"))
+            free_mb = free / (1024 * 1024)
+            # 推定サイズ
+            estimated_mb = 2000.0
+            if "9b" in model_name:
+                estimated_mb = 5500.0
+            elif "7b" in model_name:
+                estimated_mb = 4700.0
+                
+            if free_mb < estimated_mb + 500: # 500MBのマージン
+                return {
+                    "status": "error",
+                    "message": f"ディスク空き容量が不足しています。必要: {estimated_mb/1024:.1f}GB, 空き: {free_mb/1024:.1f}GB"
+                }
+        except Exception as e:
+            print(f"[handlers] Ollama disk check failed: {e}")
+
         t = threading.Thread(
             target=self._async_ollama_download_worker,
             args=(model_name,),
@@ -456,4 +489,229 @@ class WebviewApi:
             print(f"[handlers] Export worker failed: {e}")
             if self.window:
                 self.window.evaluate_js(f"onExportError({json.dumps(str(e))})")
+
+    def get_models_disk_info(self):
+        """ダウンロード済みモデル一覧、使用容量、ディスク空き容量を取得する"""
+        import shutil
+        cache_dir = self.model_manager.cache_dir
+        
+        models_info = []
+        
+        # 1. Phase 2モデル
+        for tier in ["Standard", "High Quality"]:
+            downloaded = self.model_manager.is_model_downloaded(tier)
+            size_mb = 0.0
+            if downloaded:
+                path = self.model_manager.get_model_path(tier)
+                try:
+                    size_mb = os.path.getsize(path) / (1024 * 1024)
+                except Exception:
+                    pass
+            models_info.append({
+                "name": f"Phase 2 - {tier}",
+                "tier": tier,
+                "type": "phase2",
+                "downloaded": downloaded,
+                "size_mb": round(size_mb, 1)
+            })
+            
+        # 2. Ollamaモデル
+        ollama_status = self.llm_client.check_status()
+        if ollama_status.get("status") == "online":
+            models = ollama_status.get("models", [])
+            ollama_candidates = [
+                {"name": "llama3.2:3b", "label": "llama3.2:3b (軽量)", "estimated_size_mb": 2000.0},
+                {"name": "gemma2:9b", "label": "gemma2:9b (高精度)", "estimated_size_mb": 5500.0},
+                {"name": "qwen2.5:7b", "label": "qwen2.5:7b (標準)", "estimated_size_mb": 4700.0}
+            ]
+            for cand in ollama_candidates:
+                is_dl = False
+                actual_size_mb = 0.0
+                for m in models:
+                    if cand["name"] in m["name"]:
+                        is_dl = True
+                        size_bytes = m.get("size", 0)
+                        if size_bytes > 0:
+                            actual_size_mb = size_bytes / (1024 * 1024)
+                        else:
+                            actual_size_mb = cand["estimated_size_mb"]
+                        break
+                
+                models_info.append({
+                    "name": f"Ollama - {cand['label']}",
+                    "model_name": cand["name"],
+                    "type": "ollama",
+                    "downloaded": is_dl,
+                    "size_mb": round(actual_size_mb if is_dl else 0.0, 1)
+                })
+        
+        try:
+            total, used, free = shutil.disk_usage(cache_dir)
+            total_gb = total / (1024 * 1024 * 1024)
+            free_gb = free / (1024 * 1024 * 1024)
+            used_gb = used / (1024 * 1024 * 1024)
+        except Exception:
+            total_gb = 0.0
+            free_gb = 0.0
+            used_gb = 0.0
+            
+        return {
+            "models": models_info,
+            "disk_total_gb": round(total_gb, 1),
+            "disk_used_gb": round(used_gb, 1),
+            "disk_free_gb": round(free_gb, 1)
+        }
+
+    def delete_model(self, model_type, name_or_tier):
+        """ダウンロード済みのモデルを削除する"""
+        try:
+            if model_type == "phase2":
+                tier = name_or_tier
+                if tier == "Lite":
+                    return {"status": "error", "message": "Liteモデルは削除できません。"}
+                path = self.model_manager.get_model_path(tier)
+                if os.path.exists(path):
+                    os.remove(path)
+                    return {"status": "success"}
+                return {"status": "error", "message": "モデルファイルが存在しません。"}
+            elif model_type == "ollama":
+                import urllib.request
+                import json
+                payload = {"name": name_or_tier}
+                req = urllib.request.Request(
+                    f"{self.llm_client.base_url}/api/delete",
+                    data=json.dumps(payload).encode("utf-8"),
+                    headers={"Content-Type": "application/json"},
+                    method="DELETE"
+                )
+                with urllib.request.urlopen(req) as res:
+                    pass
+                return {"status": "success"}
+            return {"status": "error", "message": f"不明なモデルタイプです: {model_type}"}
+        except Exception as e:
+            return {"status": "error", "message": str(e)}
+
+    def get_app_settings(self):
+        """設定データを取得する（なければデフォルト値）"""
+        try:
+            if os.path.exists(self.settings_path):
+                with open(self.settings_path, "r", encoding="utf-8") as f:
+                    return json.load(f)
+        except Exception as e:
+            print(f"[handlers] Failed to load settings: {e}")
+        return {"auto_update_check": True}
+
+    def save_app_settings(self, settings):
+        """設定データを保存する"""
+        try:
+            os.makedirs(os.path.dirname(self.settings_path), exist_ok=True)
+            with open(self.settings_path, "w", encoding="utf-8") as f:
+                json.dump(settings, f, ensure_ascii=False, indent=2)
+            return {"status": "success"}
+        except Exception as e:
+            return {"status": "error", "message": str(e)}
+
+    def export_midi_file(self):
+        """Phase 1で生成されたMIDIデータをファイルとして保存する"""
+        if not self.window:
+            return {"status": "error", "message": "Window context not found"}
+        if not self.last_composition:
+            return {"status": "error", "message": "MIDIデータがありません。先に作曲を行うか、プリセットをロードしてください。"}
+            
+        file_types = ('MIDI Files (*.mid;*.midi)',)
+        default_dir = os.path.expanduser("~/Music/ABMM")
+        try:
+            os.makedirs(default_dir, exist_ok=True)
+        except Exception:
+            default_dir = os.path.expanduser("~")
+            
+        file_path = self.window.create_file_dialog(
+            dialog_type=webview.SAVE_DIALOG,
+            directory=default_dir,
+            file_types=file_types,
+            save_filename="composition.mid"
+        )
+        if not file_path:
+            return {"status": "cancelled"}
+            
+        if isinstance(file_path, (list, tuple)):
+            file_path = file_path[0] if len(file_path) > 0 else None
+            
+        if not file_path:
+            return {"status": "cancelled"}
+            
+        try:
+            midi_bytes = json_to_midi(self.last_composition)
+            with open(file_path, "wb") as f:
+                f.write(midi_bytes)
+            return {"status": "success", "file_path": file_path}
+        except Exception as e:
+            return {"status": "error", "message": str(e)}
+
+    def import_midi_file(self):
+        """外部のMIDIファイル(.mid)を読み込み、現在の組成データとしてセットする"""
+        if not self.window:
+            return {"status": "error", "message": "Window context not found"}
+            
+        file_types = ('MIDI Files (*.mid;*.midi)',)
+        default_dir = os.path.expanduser("~/Music/ABMM")
+        if not os.path.exists(default_dir):
+            default_dir = os.path.expanduser("~")
+            
+        file_path = self.window.create_file_dialog(
+            dialog_type=webview.OPEN_DIALOG,
+            directory=default_dir,
+            file_types=file_types
+        )
+        if not file_path:
+            return {"status": "cancelled"}
+            
+        if isinstance(file_path, (list, tuple)):
+            file_path = file_path[0] if len(file_path) > 0 else None
+            
+        if not file_path:
+            return {"status": "cancelled"}
+            
+        try:
+            import io
+            import pretty_midi
+            with open(file_path, "rb") as f:
+                midi_bytes = f.read()
+            
+            pm = pretty_midi.PrettyMIDI(io.BytesIO(midi_bytes))
+            duration_minutes = round(pm.get_end_time() / 60.0, 1)
+            if duration_minutes < 0.1:
+                duration_minutes = 0.1
+                
+            from app.composer.midi_converter import midi_to_json
+            composition = midi_to_json(midi_bytes, duration_minutes=duration_minutes)
+            self.last_composition = composition
+            
+            tracks_info = []
+            for track in composition.tracks:
+                tracks_info.append({
+                    "track_id": track.track_id,
+                    "track_name": track.track_name,
+                    "instrument": track.instrument,
+                    "notes_count": len(track.notes)
+                })
+                
+            result = {
+                "status": "success",
+                "tempo_bpm": composition.tempo_bpm,
+                "key_mode": composition.key_mode,
+                "duration_minutes": composition.duration_minutes,
+                "tracks": tracks_info,
+                "audio_url": "temp_preview.wav"
+            }
+            
+            try:
+                midi_bin = json_to_midi(composition)
+                self.lite_renderer.render(midi_bin, self.preview_wav_path)
+            except Exception as render_err:
+                print(f"[handlers] Failed to auto-render imported MIDI preview: {render_err}")
+                
+            return result
+        except Exception as e:
+            return {"status": "error", "message": str(e)}
 

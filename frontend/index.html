@@ -14,11 +14,14 @@
   <div class="app-container">
     <!-- Header -->
     <header class="app-header">
-      <div class="logo">
-        <span class="icon">🎵</span>
-        <h1>AI Background Music Maker <span class="badge">ABMM</span></h1>
+      <div class="header-main-row">
+        <div class="logo">
+          <span class="icon">🎵</span>
+          <h1>AI Background Music Maker <span class="badge">ABMM</span></h1>
+        </div>
+        <button id="settings-toggle-btn" class="icon-btn">⚙️ 設定・容量管理</button>
       </div>
-      <p class="subtitle">自然言語の指示とパラメータから、著作権フリーのBGMをローカル生成</p>
+      <p class="subtitle">自然言語の指示とパラメータから、著作権フリー of BGMをローカル生成</p>
     </header>
 
     <div class="main-layout">
@@ -258,6 +261,10 @@
             <span class="player-badge">SoundFont合成 (Lite)</span>
           </div>
           <audio id="audio-preview" controls></audio>
+          <div class="midi-file-actions">
+            <button id="import-midi-btn" class="secondary-btn">📥 MIDIをインポート</button>
+            <button id="export-midi-btn" class="secondary-btn" disabled>📤 MIDIをエクスポート</button>
+          </div>
         </div>
 
         <!-- Phase 2 Audio Export Card -->
@@ -303,6 +310,44 @@
           </button>
         </div>
       </section>
+    </div>
+  </div>
+
+  <!-- Settings & Model Management Modal -->
+  <div id="settings-modal" class="modal-overlay hidden">
+    <div class="settings-modal-content">
+      <div class="settings-modal-header">
+        <h2>⚙️ 設定とモデル容量管理</h2>
+        <button id="settings-close-btn" class="close-btn">&times;</button>
+      </div>
+      
+      <div class="settings-modal-body">
+        <section class="settings-section-block">
+          <h3>🗂️ ディスク使用状況</h3>
+          <div class="disk-usage-summary">
+            <p>空き容量: <strong id="disk-free-val">--</strong> GB / 全体: <span id="disk-total-val">--</span> GB</p>
+            <div class="disk-progress-bar">
+              <div class="disk-progress-fill" id="disk-progress-fill"></div>
+            </div>
+          </div>
+        </section>
+        
+        <section class="settings-section-block">
+          <h3>📦 ダウンロード済みモデル一覧</h3>
+          <ul class="models-list" id="models-list">
+            <!-- Dynamically populated -->
+          </ul>
+        </section>
+        
+        <section class="settings-section-block">
+          <h3>🔒 プライバシーと通信</h3>
+          <div class="checkbox-group">
+            <input type="checkbox" id="setting-auto-update" checked>
+            <label for="setting-auto-update">起動時に新しいバージョンを自動チェックする</label>
+          </div>
+          <p class="privacy-note">※指示文や生成されたMIDI・音声データが外部サーバーへ送信されることは一切ありません。</p>
+        </section>
+      </div>
     </div>
   </div>
 

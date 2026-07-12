@@ -236,6 +236,10 @@ document.addEventListener("DOMContentLoaded", () => {
       if (exportCard) {
         exportCard.classList.remove("hidden");
       }
+      const exportMidiBtn = document.getElementById("export-midi-btn");
+      if (exportMidiBtn) {
+        exportMidiBtn.disabled = false;
+      }
       
       resTempo.textContent = `${response.tempo_bpm} BPM`;
       resKey.textContent = response.key_mode === "major" ? "Major (明るい)" : "Minor (切ない)";
@@ -487,6 +491,10 @@ document.addEventListener("DOMContentLoaded", () => {
         if (exportCard) {
           exportCard.classList.remove("hidden");
         }
+        const exportMidiBtn = document.getElementById("export-midi-btn");
+        if (exportMidiBtn) {
+          exportMidiBtn.disabled = false;
+        }
 
         alert(`プリセット '${response.name}' をロードし、プレビューを読み込みました。`);
       } else {
@@ -703,6 +711,253 @@ document.addEventListener("DOMContentLoaded", () => {
     cancelRenderBtn.classList.remove("hidden");
     alert(`書き出しエラーが発生しました:\n${err}`);
   };
+
+  // --- 設定＆モデル管理モーダル機能 ---
+  const settingsModal = document.getElementById("settings-modal");
+  const settingsToggleBtn = document.getElementById("settings-toggle-btn");
+  const settingsCloseBtn = document.getElementById("settings-close-btn");
+  const diskFreeVal = document.getElementById("disk-free-val");
+  const diskTotalVal = document.getElementById("disk-total-val");
+  const diskProgressFill = document.getElementById("disk-progress-fill");
+  const modelsList = document.getElementById("models-list");
+  const settingAutoUpdate = document.getElementById("setting-auto-update");
+
+  if (settingsToggleBtn && settingsModal) {
+    settingsToggleBtn.addEventListener("click", async () => {
+      await loadSettingsAndDiskInfo();
+      settingsModal.classList.remove("hidden");
+    });
+  }
+
+  if (settingsCloseBtn && settingsModal) {
+    settingsCloseBtn.addEventListener("click", () => {
+      settingsModal.classList.add("hidden");
+    });
+  }
+
+  async function loadSettingsAndDiskInfo() {
+    if (typeof pywebview === "undefined" || !pywebview.api || !pywebview.api.get_models_disk_info) return;
+    
+    try {
+      // 1. 設定データの取得
+      const settings = await pywebview.api.get_app_settings();
+      if (settingAutoUpdate) {
+        settingAutoUpdate.checked = settings.auto_update_check !== false;
+      }
+      
+      // 2. ディスク・モデル情報の取得
+      const info = await pywebview.api.get_models_disk_info();
+      if (diskFreeVal) diskFreeVal.textContent = info.disk_free_gb;
+      if (diskTotalVal) diskTotalVal.textContent = info.disk_total_gb;
+      
+      if (diskProgressFill && info.disk_total_gb > 0) {
+        const percent = ((info.disk_total_gb - info.disk_free_gb) / info.disk_total_gb) * 100;
+        diskProgressFill.style.width = `${percent}%`;
+      }
+      
+      // 3. モデル一覧の構築
+      if (modelsList) {
+        modelsList.innerHTML = "";
+        info.models.forEach(model => {
+          const li = document.createElement("li");
+          
+          const infoDiv = document.createElement("div");
+          infoDiv.className = "model-info";
+          
+          const nameSpan = document.createElement("span");
+          nameSpan.className = "model-name";
+          nameSpan.textContent = model.name;
+          
+          const sizeSpan = document.createElement("span");
+          sizeSpan.className = "model-size";
+          sizeSpan.textContent = model.downloaded ? `使用中: ${model.size_mb} MB` : "未ダウンロード";
+          
+          infoDiv.appendChild(nameSpan);
+          infoDiv.appendChild(sizeSpan);
+          
+          const actionsDiv = document.createElement("div");
+          actionsDiv.className = "model-actions";
+          
+          if (model.downloaded) {
+            const delBtn = document.createElement("button");
+            delBtn.className = "delete-btn";
+            delBtn.textContent = "削除";
+            delBtn.addEventListener("click", async () => {
+              if (confirm(`本当にモデル '${model.name}' を削除しますか？\n削除すると、そのティアで本番書き出しを行う際に再ダウンロードが必要になります。`)) {
+                try {
+                  const target = model.type === "phase2" ? model.tier : model.model_name;
+                  const res = await pywebview.api.delete_model(model.type, target);
+                  if (res.status === "success") {
+                    alert("モデルを削除しました。");
+                    await loadSettingsAndDiskInfo();
+                    checkOllamaStatus();
+                  } else {
+                    alert(`削除に失敗しました: ${res.message}`);
+                  }
+                } catch (e) {
+                  alert(`エラー: ${e}`);
+                }
+              }
+            });
+            actionsDiv.appendChild(delBtn);
+          } else {
+            if (model.type === "phase2") {
+              const dlBtn = document.createElement("button");
+              dlBtn.className = "secondary-btn";
+              dlBtn.textContent = "DL";
+              dlBtn.addEventListener("click", async () => {
+                try {
+                  cancelRenderBtn.classList.add("hidden");
+                  progressStatusText.textContent = `モデル '${model.name}' をダウンロード中...`;
+                  progressBarFill.style.width = "0%";
+                  progressPercent.textContent = "0%";
+                  progressCard.classList.remove("hidden");
+                  
+                  const res = await pywebview.api.start_model_download(model.tier);
+                  if (res.status === "error") {
+                    alert(res.message);
+                    progressCard.classList.add("hidden");
+                    cancelRenderBtn.classList.remove("hidden");
+                  }
+                } catch (e) {
+                  alert(`エラー: ${e}`);
+                  progressCard.classList.add("hidden");
+                  cancelRenderBtn.classList.remove("hidden");
+                }
+              });
+              actionsDiv.appendChild(dlBtn);
+            } else {
+              const statusSpan = document.createElement("span");
+              statusSpan.style.color = "var(--text-secondary)";
+              statusSpan.style.fontSize = "0.75rem";
+              statusSpan.textContent = "未取得";
+              actionsDiv.appendChild(statusSpan);
+            }
+          }
+          
+          li.appendChild(infoDiv);
+          li.appendChild(actionsDiv);
+          modelsList.appendChild(li);
+        });
+      }
+    } catch (err) {
+      console.error("Failed to load settings & disk info:", err);
+    }
+  }
+
+  if (settingAutoUpdate) {
+    settingAutoUpdate.addEventListener("change", async () => {
+      if (typeof pywebview === "undefined" || !pywebview.api || !pywebview.api.save_app_settings) return;
+      const settings = {
+        auto_update_check: settingAutoUpdate.checked
+      };
+      await pywebview.api.save_app_settings(settings);
+    });
+  }
+
+  // --- Phase 2 モデルダウンロード用コールバックの紐付け ---
+  window.onDownloadProgress = (tier, percent) => {
+    const roundedPercent = Math.round(percent * 100);
+    progressBarFill.style.width = roundedPercent + "%";
+    progressPercent.textContent = roundedPercent + "%";
+    progressStatusText.textContent = `モデル '${tier}' をダウンロード中...`;
+  };
+
+  window.onDownloadComplete = (tier, success) => {
+    progressCard.classList.add("hidden");
+    cancelRenderBtn.classList.remove("hidden");
+    
+    if (success) {
+      alert(`モデル '${tier}' のダウンロードが完了しました！`);
+    } else {
+      alert(`モデル '${tier}' のダウンロードに失敗しました。`);
+    }
+    if (settingsModal && !settingsModal.classList.contains("hidden")) {
+      loadSettingsAndDiskInfo();
+    }
+  };
+
+  // --- MIDIインポート/エクスポート機能 ---
+  const importMidiBtn = document.getElementById("import-midi-btn");
+  const exportMidiBtn = document.getElementById("export-midi-btn");
+
+  if (importMidiBtn) {
+    importMidiBtn.addEventListener("click", async () => {
+      if (typeof pywebview === "undefined" || !pywebview.api || !pywebview.api.import_midi_file) {
+        alert("APIが利用できません。");
+        return;
+      }
+      try {
+        const response = await pywebview.api.import_midi_file();
+        if (response.status === "cancelled") {
+          return;
+        }
+        if (response.status === "success") {
+          statusPlaceholder.classList.add("hidden");
+          statusContent.classList.remove("hidden");
+          if (exportCard) {
+            exportCard.classList.remove("hidden");
+          }
+          if (exportMidiBtn) {
+            exportMidiBtn.disabled = false;
+          }
+          
+          resTempo.textContent = `${response.tempo_bpm} BPM`;
+          resKey.textContent = response.key_mode === "major" ? "Major (明るい)" : "Minor (切ない)";
+          resDuration.textContent = `${response.duration_minutes} 分`;
+          
+          tracksList.innerHTML = "";
+          response.tracks.forEach(track => {
+            const li = document.createElement("li");
+            const nameBadge = document.createElement("span");
+            nameBadge.className = "track-name-badge";
+            nameBadge.innerHTML = `🎹 ${track.track_name} <span class="track-inst">${track.instrument}</span>`;
+            
+            const notesCount = document.createElement("span");
+            notesCount.className = "track-notes-count";
+            notesCount.textContent = `${track.notes_count} 音`;
+            
+            li.appendChild(nameBadge);
+            li.appendChild(notesCount);
+            tracksList.appendChild(li);
+          });
+          
+          const cacheBuster = `?t=${Date.now()}`;
+          audioPreview.src = response.audio_url + cacheBuster;
+          audioPreview.load();
+          audioPreview.play().catch(e => console.log("Autoplay prevented:", e));
+          
+          alert("MIDIファイルのインポートが完了しました。");
+        } else {
+          alert(`インポートに失敗しました: ${response.message}`);
+        }
+      } catch (err) {
+        alert(`インポートエラー: ${err}`);
+      }
+    });
+  }
+
+  if (exportMidiBtn) {
+    exportMidiBtn.addEventListener("click", async () => {
+      if (typeof pywebview === "undefined" || !pywebview.api || !pywebview.api.export_midi_file) {
+        alert("APIが利用できません。");
+        return;
+      }
+      try {
+        const response = await pywebview.api.export_midi_file();
+        if (response.status === "cancelled") {
+          return;
+        }
+        if (response.status === "success") {
+          alert(`MIDIファイルをエクスポートしました。\n保存先: ${response.file_path}`);
+        } else {
+          alert(`エクスポートに失敗しました: ${response.message}`);
+        }
+      } catch (err) {
+        alert(`エクスポートエラー: ${err}`);
+      }
+    });
+  }
 
   // 初期ロード呼び出し
   loadPresetList();
