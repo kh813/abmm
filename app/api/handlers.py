@@ -368,8 +368,13 @@ class WebviewApi:
         
         file_types = ('WAV Files (*.wav)',) if export_format == "wav" else ('MP3 Files (*.mp3)',)
         
+        music_dir = os.path.expanduser("~/Music")
+        if not os.path.exists(music_dir):
+            music_dir = os.path.expanduser("~")
+            
         file_path = self.window.create_file_dialog(
             dialog_type=webview.SAVE_DIALOG,
+            directory=music_dir,
             file_types=file_types,
             save_filename=f"background_music.{export_format}"
         )

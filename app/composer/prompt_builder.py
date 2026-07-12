@@ -1,4 +1,5 @@
 import json
+import random
 from typing import Dict, Any, Optional, List
 from app.api.llm_client import OllamaClient
 from app.composer.midi_schema import MidiComposition, MidiTrack, MidiNote, MidiSection
@@ -11,20 +12,8 @@ JSON Schema format:
   "tempo_bpm": int (60-120),
   "key_mode": "major" | "minor",
   "style": "lofi" | "jazz" | "pop" | "ambient" | "rock",
-  "instruments": ["piano", "guitar", "bass", "drums"],
-  "sections": [
-    {
-      "name": "intro" | "main" | "outro",
-      "bars": int (usually 4 or 8),
-      "chords": [string] (list of chord names matching the bars count, e.g. ["C", "F", "C", "G"])
-    }
-  ]
+  "instruments": ["piano", "guitar", "bass", "drums"]
 }
-
-Rules for Chords selection:
-1. For key_mode = "major": Use major chord progressions like ["C", "F", "C", "G"], ["C", "G", "Am", "F"], or ["F", "G", "C", "C"]. Dominant 7th/Maj7th chords like ["Cmaj7", "Fmaj7", "G7"] are also good.
-2. For key_mode = "minor": Use minor chord progressions like ["Am", "Dm", "F", "E7"], ["Am", "F", "C", "G"], or ["Dm", "Am", "E7", "Am"].
-3. Ensure the length of the "chords" list matches the "bars" count.
 """
 
 FEW_SHOT_EXAMPLES = """
@@ -36,14 +25,7 @@ Output:
   "tempo_bpm": 82,
   "key_mode": "major",
   "style": "ambient",
-  "instruments": ["piano", "guitar", "bass"],
-  "sections": [
-    {
-      "name": "main",
-      "bars": 8,
-      "chords": ["Cmaj7", "Fmaj7", "Cmaj7", "G7", "Cmaj7", "Fmaj7", "Cmaj7", "Cmaj7"]
-    }
-  ]
+  "instruments": ["piano", "guitar", "bass"]
 }
 """
 
@@ -70,26 +52,28 @@ CHORD_MAP = {
     "Am7": [57, 60, 64, 67], "Bm7": [59, 62, 66, 72]
 }
 
-def get_chord_pitches(chord_name: str) -> list:
-    """コード名から構成音のピッチリストを取得する"""
+def get_chord_pitches(chord_name: str, key_offset: int = 0) -> list:
+    """コード名から構成音のピッチリストを取得し、キーオフセットを適用する"""
     chord_name = chord_name.strip()
     if chord_name in CHORD_MAP:
-        return CHORD_MAP[chord_name]
-    
-    # 簡易解析フォールバック
-    base_note = chord_name[0].upper()
-    if len(chord_name) > 1 and chord_name[1] in ("#", "b"):
-        base_note += chord_name[1]
+        base_pitches = CHORD_MAP[chord_name]
+    else:
+        # 簡易解析フォールバック
+        base_note = chord_name[0].upper()
+        if len(chord_name) > 1 and chord_name[1] in ("#", "b"):
+            base_note += chord_name[1]
+            
+        is_minor = "m" in chord_name and "maj" not in chord_name.lower()
+        notes_offsets = [0, 3, 7] if is_minor else [0, 4, 7]
+        base_pitches_dict = {
+            "C": 60, "C#": 61, "Db": 61, "D": 62, "D#": 63, "Eb": 63,
+            "E": 64, "F": 65, "F#": 66, "Gb": 66, "G": 67, "G#": 68,
+            "Ab": 68, "A": 69, "A#": 70, "Bb": 70, "B": 71
+        }
+        root = base_pitches_dict.get(base_note, 60)
+        base_pitches = [root + offset for offset in notes_offsets]
         
-    is_minor = "m" in chord_name and "maj" not in chord_name.lower()
-    notes_offsets = [0, 3, 7] if is_minor else [0, 4, 7]
-    base_pitches = {
-        "C": 60, "C#": 61, "Db": 61, "D": 62, "D#": 63, "Eb": 63,
-        "E": 64, "F": 65, "F#": 66, "Gb": 66, "G": 67, "G#": 68,
-        "Ab": 68, "A": 69, "A#": 70, "Bb": 70, "B": 71
-    }
-    root = base_pitches.get(base_note, 60)
-    return [root + offset for offset in notes_offsets]
+    return [p + key_offset for p in base_pitches]
 
 def build_prompt(
     description: str,
@@ -124,13 +108,95 @@ Please generate a corresponding JSON output.
 """
     return prompt
 
+def get_song_structure(total_bars_needed: int, key_mode: str, style: str) -> List[Dict[str, Any]]:
+    """音楽理論的セオリーに基づき、イントロ、サビ、Aメロ、アウトロの曲構成とコード進行を構築する"""
+    
+    # 決定論的なマンネリを防ぐため、毎回異なるコード進行プールから選択
+    major_pools = {
+        "royal_road": ["Fmaj7", "G7", "Em7", "Am7"],
+        "pop": ["C", "G", "Am", "F"],
+        "canon": ["C", "G", "Am", "Em", "F", "C", "F", "G"],
+        "lofi_jazz": ["Cmaj7", "A7", "Dm7", "G7"],
+        "ambient": ["Cmaj7", "Fmaj7", "Cmaj7", "Fmaj7"]
+    }
+    minor_pools = {
+        "andalusian": ["Am", "G", "F", "E7"],
+        "minor_pop": ["Am", "F", "C", "G"],
+        "lofi_jazz": ["Am7", "D7", "Gmaj7", "Cmaj7"],
+        "ambient": ["Am7", "Em7", "Fmaj7", "G6"]
+    }
+    
+    pool = minor_pools if key_mode == "minor" else major_pools
+    
+    # スタイルに応じたセクション進行の割り当て
+    if style in ("lofi", "jazz"):
+        verse_chords = pool["lofi_jazz"]
+        chorus_chords = pool["lofi_jazz"]
+    elif style == "ambient":
+        verse_chords = pool["ambient"]
+        chorus_chords = pool["ambient"]
+    else:
+        verse_chords = pool["andalusian"] if key_mode == "minor" else pool["royal_road"]
+        chorus_chords = pool["minor_pop"] if key_mode == "minor" else pool["pop"]
+
+    # 毎回異なるコード進行にするため、Cメジャー/Aマイナーからランダムにキー転調 (Transposition Offset) を施す
+    key_offset = random.randint(-5, 6)
+    
+    sections_layout = []
+    
+    # 短尺時と長尺時で構成を変更
+    if total_bars_needed <= 8:
+        # 短尺：Aメロ ➡ サビ
+        sections_layout.append({"name": "verse", "bars": total_bars_needed // 2, "chords": verse_chords, "intensity": "low"})
+        sections_layout.append({"name": "chorus", "bars": total_bars_needed - (total_bars_needed // 2), "chords": chorus_chords, "intensity": "high"})
+    else:
+        # 長尺：イントロ ➡ Aメロ（静か） ➡ サビ（盛り上がり） ➡ 間奏 ➡ サビ ➡ アウトロ（静か）
+        intro_bars = 4
+        outro_bars = 4
+        middle_bars = total_bars_needed - intro_bars - outro_bars
+        
+        sections_layout.append({"name": "intro", "bars": intro_bars, "chords": verse_chords, "intensity": "low"})
+        
+        current_middle = 0
+        cycle = 0
+        while current_middle < middle_bars:
+            remaining = middle_bars - current_middle
+            
+            if cycle % 2 == 0:
+                # Aメロ (Verse)
+                bars = min(8, remaining)
+                sections_layout.append({"name": "verse", "bars": bars, "chords": verse_chords, "intensity": "low"})
+            else:
+                # サビ (Chorus)
+                bars = min(8, remaining)
+                sections_layout.append({"name": "chorus", "bars": bars, "chords": chorus_chords, "intensity": "high"})
+                
+            current_middle += bars
+            cycle += 1
+            
+        sections_layout.append({"name": "outro", "bars": outro_bars, "chords": verse_chords, "intensity": "low"})
+
+    final_sections = []
+    current_bar = 0
+    for sec in sections_layout:
+        final_sections.append({
+            "name": sec["name"],
+            "start_bar": current_bar,
+            "bars": sec["bars"],
+            "chords": sec["chords"],
+            "intensity": sec["intensity"],
+            "key_offset": key_offset
+        })
+        current_bar += sec["bars"]
+        
+    return final_sections
+
 def expand_chord_plan_to_midi(plan: Dict[str, Any], duration_minutes: float) -> MidiComposition:
     """高次のコード進行・構成プランを具体的なMIDIノート（MidiComposition）へ拡張・展開する"""
     tempo_bpm = int(plan.get("tempo_bpm", 80))
     key_mode = plan.get("key_mode", "major")
     style = plan.get("style", "lofi").lower()
     instruments = plan.get("instruments", ["piano", "guitar", "bass", "drums"])
-    sections_plan = plan.get("sections", [])
     
     # 指定の再生時間をカバーするのに必要な総小節数を計算
     seconds_per_beat = 60.0 / tempo_bpm
@@ -138,34 +204,8 @@ def expand_chord_plan_to_midi(plan: Dict[str, Any], duration_minutes: float) -> 
     target_seconds = duration_minutes * 60.0
     total_bars_needed = max(4, int(target_seconds / seconds_per_bar))
     
-    if not sections_plan:
-        sections_plan = [
-            {"name": "main", "bars": 4, "chords": ["C", "G", "Am", "F"] if key_mode == "major" else ["Am", "Dm", "F", "E"]}
-        ]
-        
-    # 目標の小節数をカバーするよう、セクションプランを循環して割り当てる
-    sections = []
-    current_bar = 0
-    section_index = 0
-    
-    while current_bar < total_bars_needed:
-        sec_plan = sections_plan[section_index % len(sections_plan)]
-        name = sec_plan.get("name", "main")
-        bars = int(sec_plan.get("bars", 4))
-        chords = sec_plan.get("chords", ["C"])
-        
-        # 最終小節の調整
-        if current_bar + bars > total_bars_needed:
-            bars = total_bars_needed - current_bar
-            
-        sections.append({
-            "name": name,
-            "start_bar": current_bar,
-            "bars": bars,
-            "chords": chords
-        })
-        current_bar += bars
-        section_index += 1
+    # 曲のセクション構成を動的に生成
+    sections = get_song_structure(total_bars_needed, key_mode, style)
 
     # 各楽器トラックごとのノート生成
     track_notes: Dict[str, List[MidiNote]] = {
@@ -179,6 +219,9 @@ def expand_chord_plan_to_midi(plan: Dict[str, Any], duration_minutes: float) -> 
         start_bar = sec["start_bar"]
         bars = sec["bars"]
         chords = sec["chords"]
+        intensity = sec["intensity"]
+        key_offset = sec["key_offset"]
+        
         if not chords:
             chords = ["C"]
             
@@ -188,38 +231,65 @@ def expand_chord_plan_to_midi(plan: Dict[str, Any], duration_minutes: float) -> 
             
             # 各小節のコード進行
             chord_name = chords[b % len(chords)]
-            pitches = get_chord_pitches(chord_name)
+            pitches = get_chord_pitches(chord_name, key_offset)
             
             # 1. ピアノ（コード・伴奏）トラック
             if "piano" in instruments:
-                for p in pitches:
-                    track_notes["piano"].append(MidiNote(step=base_step + 0, pitch=p, velocity=75, duration_steps=6))
-                    track_notes["piano"].append(MidiNote(step=base_step + 8, pitch=p, velocity=70, duration_steps=6))
+                if intensity == "low":
+                    # 静かなパート：白玉コード（小節頭で一回伸ばす）
+                    for p in pitches:
+                        track_notes["piano"].append(MidiNote(step=base_step + 0, pitch=p, velocity=60, duration_steps=14))
+                else:
+                    # 盛り上がるサビ：リズム感のあるコードバッキング
+                    for p in pitches:
+                        track_notes["piano"].append(MidiNote(step=base_step + 0, pitch=p, velocity=75, duration_steps=6))
+                        track_notes["piano"].append(MidiNote(step=base_step + 8, pitch=p, velocity=70, duration_steps=6))
                     
             # 2. ギター（アルペジオ）トラック
             if "guitar" in instruments:
-                # 16ビートアルペジオパターン
-                extended_pitches = pitches * 2
-                for step_offset, p in zip([0, 4, 8, 12], extended_pitches):
-                    track_notes["guitar"].append(MidiNote(step=base_step + step_offset, pitch=p + 12, velocity=65, duration_steps=3))
+                if intensity == "low":
+                    # 静かなパート：音数を減らしたゆっくりしたアルペジオ
+                    for step_offset, p in zip([0, 8], pitches):
+                        track_notes["guitar"].append(MidiNote(step=base_step + step_offset, pitch=p + 12, velocity=55, duration_steps=6))
+                else:
+                    # 盛り上がるパート：16ビートの細かなアルペジオ
+                    extended_pitches = pitches * 2
+                    for step_offset, p in zip([0, 4, 8, 12], extended_pitches):
+                        track_notes["guitar"].append(MidiNote(step=base_step + step_offset, pitch=p + 12, velocity=65, duration_steps=3))
                     
             # 3. ベーストラック
             if "bass" in instruments:
                 root_pitch = pitches[0] - 24  # 2オクターブ低く
-                track_notes["bass"].append(MidiNote(step=base_step + 0, pitch=root_pitch, velocity=85, duration_steps=8))
-                track_notes["bass"].append(MidiNote(step=base_step + 8, pitch=root_pitch, velocity=80, duration_steps=8))
+                if intensity == "low":
+                    # Aメロなどは全音符でルートを支えるのみ
+                    track_notes["bass"].append(MidiNote(step=base_step + 0, pitch=root_pitch, velocity=75, duration_steps=14))
+                else:
+                    # サビは8ビートやシンコペーションでリズムを刻む
+                    track_notes["bass"].append(MidiNote(step=base_step + 0, pitch=root_pitch, velocity=85, duration_steps=6))
+                    track_notes["bass"].append(MidiNote(step=base_step + 8, pitch=root_pitch, velocity=80, duration_steps=6))
                 
             # 4. ドラムトラック (Channel 9, Kick=36, Snare=38, Hihat=42)
             if "drums" in instruments:
-                # 8ビート基本リズムパターン
-                track_notes["drums"].append(MidiNote(step=base_step + 0, pitch=36, velocity=95, duration_steps=2))
-                track_notes["drums"].append(MidiNote(step=base_step + 8, pitch=36, velocity=95, duration_steps=2))
-                track_notes["drums"].append(MidiNote(step=base_step + 4, pitch=38, velocity=85, duration_steps=2))
-                track_notes["drums"].append(MidiNote(step=base_step + 12, pitch=38, velocity=85, duration_steps=2))
-                
-                # クローズドハイハットの連続
-                for h in range(8):
-                    track_notes["drums"].append(MidiNote(step=base_step + (h * 2), pitch=42, velocity=70, duration_steps=1))
+                if intensity == "low" and sec["name"] in ("intro", "outro"):
+                    # イントロやアウトロはドラムなし、または非常に薄いハイハットのみ
+                    if b % 2 == 0:
+                        track_notes["drums"].append(MidiNote(step=base_step + 0, pitch=42, velocity=50, duration_steps=1))
+                else:
+                    # 通常ドラムパターン
+                    # キック
+                    track_notes["drums"].append(MidiNote(step=base_step + 0, pitch=36, velocity=90, duration_steps=2))
+                    if intensity == "high":
+                        track_notes["drums"].append(MidiNote(step=base_step + 8, pitch=36, velocity=90, duration_steps=2))
+                        
+                    # スネア (2拍、4拍)
+                    track_notes["drums"].append(MidiNote(step=base_step + 4, pitch=38, velocity=85, duration_steps=2))
+                    track_notes["drums"].append(MidiNote(step=base_step + 12, pitch=38, velocity=85, duration_steps=2))
+                    
+                    # ハイハット
+                    hihat_density = 8 if intensity == "high" else 4
+                    step_jump = 16 // hihat_density
+                    for h in range(hihat_density):
+                        track_notes["drums"].append(MidiNote(step=base_step + (h * step_jump), pitch=42, velocity=65, duration_steps=1))
 
     # トラックオブジェクトの構築
     tracks = []
@@ -299,6 +369,7 @@ def generate_midi_json(
     last_error = ""
     last_response = ""
 
+    # より創造的（クリエイティブ）かつ毎回コード進行にブレが出るよう、Temperatureを0.7に引き上げる
     for attempt in range(max_retries + 1):
         try:
             current_prompt = prompt
@@ -341,9 +412,6 @@ def generate_midi_json(
         "tempo_bpm": tempo_bpm,
         "key_mode": key_mode,
         "style": "lofi",
-        "instruments": ["piano", "guitar", "bass", "drums"],
-        "sections": [
-            {"name": "main", "bars": 4, "chords": ["C", "G", "Am", "F"] if key_mode == "major" else ["Am", "Dm", "F", "E"]}
-        ]
+        "instruments": ["piano", "guitar", "bass", "drums"]
     }
     return expand_chord_plan_to_midi(default_plan, duration_minutes)

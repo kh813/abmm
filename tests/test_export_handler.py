@@ -1,9 +1,8 @@
 import pytest
 import json
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, patch, ANY
 from app.api.handlers import WebviewApi
 from app.composer.midi_schema import MidiComposition
-
 import webview
 
 def test_select_export_file():
@@ -17,6 +16,7 @@ def test_select_export_file():
     assert path == "/path/to/exported_file.wav"
     api.window.create_file_dialog.assert_called_once_with(
         dialog_type=webview.SAVE_DIALOG,
+        directory=ANY,
         file_types=('WAV Files (*.wav)',),
         save_filename='background_music.wav'
     )
