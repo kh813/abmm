@@ -98,10 +98,11 @@
 - [x] 8.8 エラーがあれば修正し、git commit を実行する
 
 ### Phase 9: パッケージングと配布パイプライン (Phase E - 仕上げその3)
-- [ ] 9.1 `pyinstaller` 用のビルド設定ファイル ([abmm.spec](file:///Users/hiroshi/dev/abmm/abmm.spec)) の作成（arm64ターゲット、frontend同梱、Info.plist設定等）
-- [ ] 9.2 ローカルでの `pyinstaller` ビルド実行スクリプトの作成と動作確認
-- [ ] 9.3 GitHub Actions用ワークフロー定義ファイルを作成（macOSランナー、ビルド、ad-hoc署名、dittoによるZIP化、Releasesへのアップロード） (`.github/workflows/build.yml`)
-- [ ] 9.4 ビルドされた `.app` がオフライン環境でリソースを正しく読み込めるかどうかの検証テストの実施
-- [ ] 9.5 READMEにインストール方法、起動トラブルシューティング、およびGatekeeper回避手順（右クリック→開く）を追記
-- [ ] 9.6 ビルドパッケージの整合性テストおよびインストール検証（テストコードまたは確認スクリプトの実行）
-- [ ] 9.7 エラーがあれば修正し、git commit を実行する
+- [x] 9.1 `pyinstaller` 用のビルド設定ファイル ([abmm.spec](file:///Users/hiroshi/dev/abmm/abmm.spec)) の作成（arm64ターゲット、frontend同梱、Info.plist設定等）
+- [x] 9.2 ローカルでの `pyinstaller` ビルド実行スクリプトの作成と動作確認
+- [x] 9.3 GitHub Actions用ワークフロー定義ファイルを作成（macOSランナー、ビルド、ad-hoc署名、dittoによるZIP化、Releasesへのアップロード） (`.github/workflows/build.yml`)
+- [x] 9.4 ビルドされた `.app` がオフライン環境でリソースを正しく読み込めるかどうかの検証テストの実施
+- [x] 9.5 READMEにインストール方法、起動トラブルシューティング、およびGatekeeper回避手順（右クリック→開く）を追記
+- [x] 9.6 ビルドパッケージの整合性テストおよびインストール検証（テストコードまたは確認スクリプトの実行）
+- [x] 9.7 エラーがあれば修正し、git commit を実行する
+

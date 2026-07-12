@@ -1,4 +1,5 @@
 import os
+import sys
 import json
 import threading
 from typing import Dict, Any, Optional
@@ -51,7 +52,10 @@ class WebviewApi:
         self.neural_renderer = NeuralRenderer(self.model_manager)
         
         # パス設定
-        self.base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        if hasattr(sys, "_MEIPASS"):
+            self.base_dir = sys._MEIPASS
+        else:
+            self.base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
         self.frontend_dir = os.path.join(self.base_dir, "frontend")
         self.preview_wav_path = os.path.join(self.frontend_dir, "temp_preview.wav")
         
