@@ -64,11 +64,11 @@ class WebviewApi:
         self.render_thread = None
         self.preset_manager = PresetManager()
 
-    def set_window(self, window) -> None:
+    def set_window(self, window):
         """pywebviewのウィンドウインスタンスを紐づける"""
         self.window = window
 
-    def get_hardware_specs(self) -> Dict[str, Any]:
+    def get_hardware_specs(self):
         """PCのスペック情報を取得する"""
         try:
             return detect_hardware_spec()
@@ -81,14 +81,14 @@ class WebviewApi:
                 "error": str(e)
             }
 
-    def check_model_downloaded(self, tier: str) -> bool:
+    def check_model_downloaded(self, tier):
         """指定モデルがダウンロード済みか確認する"""
         try:
             return self.model_manager.is_model_downloaded(tier)
         except Exception:
             return False
 
-    def start_model_download(self, tier: str) -> Dict[str, Any]:
+    def start_model_download(self, tier):
         """非同期でモデルのダウンロードを開始する"""
         download_thread = threading.Thread(
             target=self._async_download_worker,
@@ -107,12 +107,12 @@ class WebviewApi:
         if self.window:
             self.window.evaluate_js(f"onDownloadComplete({json.dumps(tier)}, {json.dumps(success)})")
 
-    def cancel_render(self) -> Dict[str, Any]:
+    def cancel_render(self):
         """現在進行中のレンダリング処理をキャンセルする"""
         self.neural_renderer.cancel()
         return {"status": "success", "message": "Cancellation request sent"}
 
-    def start_render_async(self, params: Dict[str, Any]) -> Dict[str, Any]:
+    def start_render_async(self, params):
         """
         非同期で作曲＆レンダリング処理（全体本番 or 30秒プレビュー）を開始する。
         """
@@ -220,13 +220,13 @@ class WebviewApi:
         if self.window:
             self.window.evaluate_js(f"updateRenderStatus({json.dumps(msg)})")
 
-    def get_last_composition(self) -> Optional[Dict[str, Any]]:
+    def get_last_composition(self):
         """最後に生成されたMIDI JSONを取得"""
         if self.last_composition:
             return self.last_composition.model_dump()
         return None
 
-    def compose_and_preview(self, description: str, tempo: int, key_mode: str, duration: float, **kwargs) -> Dict[str, Any]:
+    def compose_and_preview(self, description, tempo, key_mode, duration, **kwargs):
         """互換性維持のための同期メソッド"""
         # start_render_async を代わりに走らせるシミュレーション、
         # あるいは直接LiteRendererを呼ぶ
@@ -266,7 +266,7 @@ class WebviewApi:
         except Exception as e:
             return {"status": "error", "message": str(e)}
 
-    def save_preset(self, name: str, params: Dict[str, Any]) -> Dict[str, Any]:
+    def save_preset(self, name, params):
         """現在の作曲結果とパラメータをプリセットに保存する"""
         if not self.last_composition:
             return {"status": "error", "message": "保存する作曲データがありません。先に作曲を実行してください。"}
@@ -276,14 +276,14 @@ class WebviewApi:
         except Exception as e:
             return {"status": "error", "message": str(e)}
 
-    def list_presets(self) -> List[Dict[str, Any]]:
+    def list_presets(self):
         """保存されたプリセット一覧を取得する"""
         try:
             return self.preset_manager.list_presets()
         except Exception:
             return []
 
-    def load_preset(self, key: str) -> Dict[str, Any]:
+    def load_preset(self, key):
         """プリセットを読み込んでパラメータとMIDI compositionをセットする"""
         try:
             data = self.preset_manager.load_preset(key)
@@ -317,7 +317,7 @@ class WebviewApi:
         except Exception as e:
             return {"status": "error", "message": str(e)}
 
-    def delete_preset(self, key: str) -> Dict[str, Any]:
+    def delete_preset(self, key):
         """プリセットを削除する"""
         try:
             success = self.preset_manager.delete_preset(key)
