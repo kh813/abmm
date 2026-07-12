@@ -1,18 +1,18 @@
 /* AI Background Music Maker (ABMM) Styling */
 
 :root {
-  --bg-color: #0f1115;
-  --panel-bg: #161821;
-  --border-color: rgba(255, 255, 255, 0.08);
-  --text-primary: #f3f4f6;
-  --text-secondary: #9ca3af;
-  --primary-accent: hsl(260, 80%, 65%);
-  --primary-hover: hsl(260, 80%, 72%);
-  --success-color: #10b981;
-  --error-color: #ef4444;
+  --bg-color: #f3f4f6;
+  --panel-bg: #ffffff;
+  --border-color: rgba(0, 0, 0, 0.08);
+  --text-primary: #111827;
+  --text-secondary: #4b5563;
+  --primary-accent: hsl(260, 75%, 55%);
+  --primary-hover: hsl(260, 75%, 45%);
+  --success-color: #059669;
+  --error-color: #dc2626;
   --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  --shadow-lg: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
-  --shadow-sm: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
+  --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.05);
 }
 
 * {
@@ -130,7 +130,7 @@ body {
 
 textarea {
   font-family: var(--font-sans);
-  background-color: rgba(0, 0, 0, 0.2);
+  background-color: rgba(0, 0, 0, 0.02);
   border: 1px solid var(--border-color);
   border-radius: 8px;
   color: var(--text-primary);
@@ -171,7 +171,7 @@ textarea:focus {
 }
 
 .slider-val {
-  background-color: rgba(255, 255, 255, 0.05);
+  background-color: rgba(0, 0, 0, 0.03);
   padding: 0.15rem 0.5rem;
   border-radius: 4px;
   font-family: monospace;
@@ -184,7 +184,7 @@ input[type="range"] {
   -webkit-appearance: none;
   width: 100%;
   height: 6px;
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(0, 0, 0, 0.08);
   border-radius: 9999px;
   outline: none;
 }
@@ -219,7 +219,7 @@ input[type="range"]::-webkit-slider-thumb:hover {
 }
 
 .toggle-btn {
-  background-color: rgba(255, 255, 255, 0.03);
+  background-color: rgba(0, 0, 0, 0.03);
   border: 1px solid var(--border-color);
   color: var(--text-secondary);
   padding: 0.6rem;
@@ -232,7 +232,7 @@ input[type="range"]::-webkit-slider-thumb:hover {
 }
 
 .toggle-btn:hover {
-  background-color: rgba(255, 255, 255, 0.06);
+  background-color: rgba(0, 0, 0, 0.06);
   color: var(--text-primary);
 }
 
@@ -294,7 +294,7 @@ input[type="range"]::-webkit-slider-thumb:hover {
 /* Right Panel Styles */
 .status-card {
   flex: 1;
-  background-color: rgba(0, 0, 0, 0.15);
+  background-color: rgba(0, 0, 0, 0.02);
   border: 1px solid var(--border-color);
   border-radius: 12px;
   padding: 1.5rem;
@@ -360,7 +360,7 @@ input[type="range"]::-webkit-slider-thumb:hover {
 }
 
 .meta-item {
-  background-color: rgba(255, 255, 255, 0.03);
+  background-color: rgba(0, 0, 0, 0.02);
   border: 1px solid var(--border-color);
   border-radius: 8px;
   padding: 0.5rem 0.75rem;
@@ -412,12 +412,12 @@ input[type="range"]::-webkit-slider-thumb:hover {
 }
 
 .tracks-list::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(0, 0, 0, 0.1);
   border-radius: 9999px;
 }
 
 .tracks-list li {
-  background-color: rgba(255, 255, 255, 0.02);
+  background-color: rgba(0, 0, 0, 0.02);
   border: 1px solid var(--border-color);
   border-radius: 8px;
   padding: 0.6rem 0.75rem;
@@ -429,7 +429,7 @@ input[type="range"]::-webkit-slider-thumb:hover {
 }
 
 .tracks-list li:hover {
-  background-color: rgba(255, 255, 255, 0.04);
+  background-color: rgba(0, 0, 0, 0.04);
 }
 
 .track-name-badge {
@@ -442,7 +442,7 @@ input[type="range"]::-webkit-slider-thumb:hover {
 .track-inst {
   color: var(--text-secondary);
   font-size: 0.75rem;
-  background-color: rgba(255, 255, 255, 0.05);
+  background-color: rgba(0, 0, 0, 0.05);
   padding: 0.1rem 0.35rem;
   border-radius: 4px;
 }
@@ -453,9 +453,8 @@ input[type="range"]::-webkit-slider-thumb:hover {
   font-weight: 600;
 }
 
-/* Player Card */
 .player-card {
-  background-color: rgba(0, 0, 0, 0.25);
+  background-color: rgba(0, 0, 0, 0.02);
   border: 1px solid var(--border-color);
   border-radius: 12px;
   padding: 1rem 1.25rem;
@@ -479,7 +478,7 @@ input[type="range"]::-webkit-slider-thumb:hover {
 .player-badge {
   font-size: 0.7rem;
   font-weight: 500;
-  background-color: rgba(255, 255, 255, 0.05);
+  background-color: rgba(0, 0, 0, 0.05);
   border: 1px solid var(--border-color);
   color: var(--text-secondary);
   padding: 0.15rem 0.4rem;
@@ -489,7 +488,6 @@ input[type="range"]::-webkit-slider-thumb:hover {
 audio {
   width: 100%;
   outline: none;
-  filter: invert(0.9) hue-rotate(180deg); /* Style the native player to match dark mode */
 }
 
 /* Scrollable Controls Container */
@@ -511,13 +509,13 @@ audio {
 }
 
 .controls-content::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(0, 0, 0, 0.1);
   border-radius: 9999px;
 }
 
 /* Instrument Balance Panel */
 .instrument-balance {
-  background-color: rgba(0, 0, 0, 0.12);
+  background-color: rgba(0, 0, 0, 0.02);
   border: 1px solid var(--border-color);
   border-radius: 12px;
   padding: 1rem;
@@ -553,9 +551,8 @@ audio {
   box-shadow: 0 0 4px var(--primary-accent);
 }
 
-/* Hardware Info Bar */
 .hardware-info-bar {
-  background-color: rgba(255, 255, 255, 0.03);
+  background-color: rgba(0, 0, 0, 0.02);
   border: 1px solid var(--border-color);
   border-radius: 8px;
   padding: 0.6rem 0.8rem;
@@ -576,7 +573,7 @@ audio {
 
 /* Preset Management Panel */
 .preset-management {
-  background-color: rgba(0, 0, 0, 0.12);
+  background-color: rgba(0, 0, 0, 0.02);
   border: 1px solid var(--border-color);
   border-radius: 12px;
   padding: 1rem;
@@ -592,7 +589,7 @@ audio {
 
 .preset-save-row input[type="text"], .preset-load-row select {
   flex: 1;
-  background-color: rgba(0, 0, 0, 0.25);
+  background-color: rgba(0, 0, 0, 0.03);
   border: 1px solid var(--border-color);
   border-radius: 6px;
   color: var(--text-primary);
@@ -641,7 +638,7 @@ audio {
 
 /* Ollama Connection Card */
 .ollama-status-card {
-  background-color: rgba(255, 255, 255, 0.02);
+  background-color: rgba(0, 0, 0, 0.02);
   border: 1px solid var(--border-color);
   border-radius: 10px;
   padding: 0.8rem;
@@ -676,7 +673,7 @@ audio {
 }
 
 .model-selection-row select {
-  background-color: rgba(0, 0, 0, 0.3);
+  background-color: rgba(0, 0, 0, 0.03);
   border: 1px solid var(--border-color);
   border-radius: 6px;
   color: var(--text-primary);
@@ -693,7 +690,7 @@ audio {
 }
 
 .download-progress-container {
-  background-color: rgba(255, 255, 255, 0.05);
+  background-color: rgba(0, 0, 0, 0.05);
   border-radius: 4px;
   height: 6px;
   overflow: hidden;
@@ -720,29 +717,49 @@ audio {
   padding: 0.4rem;
 }
 
-/* Active Progress Card */
+/* Active Progress Card (Modal Overlay) */
 .progress-card {
-  background-color: rgba(255, 255, 255, 0.03);
-  border: 1px solid var(--primary-accent);
-  border-radius: 12px;
-  padding: 1.2rem;
-  margin-top: 1rem;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(243, 244, 246, 0.85); /* Semi-transparent light overlay matching --bg-color */
+  backdrop-filter: blur(5px);
+  z-index: 9999;
+  margin: 0;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
   display: flex;
   flex-direction: column;
-  gap: 0.8rem;
-  box-shadow: 0 0 15px rgba(124, 58, 237, 0.15);
+  justify-content: center;
+  align-items: center;
+}
+
+.progress-modal-content {
+  background-color: var(--panel-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  padding: 2rem;
+  width: 90%;
+  max-width: 500px;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.08);
 }
 
 .progress-header {
   display: flex;
   justify-content: space-between;
-  font-size: 0.9rem;
+  font-size: 0.95rem;
   color: var(--text-primary);
   font-weight: 600;
 }
 
 .progress-bar-container {
-  background-color: rgba(255, 255, 255, 0.05);
+  background-color: rgba(0, 0, 0, 0.05);
   border-radius: 6px;
   height: 10px;
   overflow: hidden;
@@ -758,7 +775,7 @@ audio {
   box-shadow: 0 0 8px var(--primary-accent);
 }
 
-.progress-card .delete-btn {
+.progress-modal-content .delete-btn {
   align-self: flex-end;
   font-size: 0.8rem;
   padding: 0.4rem 0.8rem;

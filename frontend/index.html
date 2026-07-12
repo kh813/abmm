@@ -200,17 +200,20 @@
           <span id="spec-text">スペック検出中...</span>
         </div>
 
-        <!-- Active Progress Card -->
+        <!-- Active Progress Card (Modal Overlay) -->
         <div class="progress-card hidden" id="progress-card">
-          <div class="progress-header">
-            <span id="progress-status-text">MIDI作曲中...</span>
-            <span id="progress-percent">0%</span>
+          <div class="progress-modal-content">
+            <div class="progress-header">
+              <span id="progress-status-text">MIDI作曲中...</span>
+              <span id="progress-percent">0%</span>
+            </div>
+            <div class="progress-bar-container">
+              <div class="progress-bar-fill" id="progress-bar-fill"></div>
+            </div>
+            <button type="button" id="cancel-render-btn" class="delete-btn">生成をキャンセル</button>
           </div>
-          <div class="progress-bar-container">
-            <div class="progress-bar-fill" id="progress-bar-fill"></div>
-          </div>
-          <button type="button" id="cancel-render-btn" class="delete-btn">生成をキャンセル</button>
         </div>
+
 
 
 
