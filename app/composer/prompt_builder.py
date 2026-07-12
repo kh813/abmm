@@ -106,43 +106,57 @@ Brightness (Major/Minor balance): {brightness}
 Energy (Dynamics/Volume): {energy}
 Density (Note count): {density}
 Instrument Balance Weights: {inst_str}
-
+ 
 Please generate a corresponding JSON output.
 {FEW_SHOT_EXAMPLES}
 """
     return prompt
 
 def get_song_structure(total_bars_needed: int, key_mode: str, style: str) -> List[Dict[str, Any]]:
-    """音楽理論的セオリーに基づき、イントロ、サビ、Aメロ、アウトロの曲構成とコード進行を構築する"""
+    """音楽理論的セオリーに基づき、イントロ、サビ、Aメロ、Bメロ、アウトロの曲構成とコード進行を構築する"""
     
     # 決定論的なマンネリを防ぐため、毎回異なるコード進行プールから選択
-    major_pools = {
-        "royal_road": ["Fmaj7", "G7", "Em7", "Am7"],
-        "pop": ["C", "G", "Am", "F"],
-        "canon": ["C", "G", "Am", "Em", "F", "C", "F", "G"],
-        "lofi_jazz": ["Cmaj7", "A7", "Dm7", "G7"],
+    # メジャーキー進行
+    major_verse_pools = {
+        "pop": ["C", "G", "Am", "Em"],
+        "jazz": ["Dm7", "G7", "Cmaj7", "A7"],
+        "rock": ["C", "F", "G", "C"],
         "ambient": ["Cmaj7", "Fmaj7", "Cmaj7", "Fmaj7"]
     }
-    minor_pools = {
-        "andalusian": ["Am", "G", "F", "E7"],
-        "minor_pop": ["Am", "F", "C", "G"],
-        "lofi_jazz": ["Am7", "D7", "Gmaj7", "Cmaj7"],
-        "ambient": ["Am7", "Em7", "Fmaj7", "G6"]
+    major_chorus_pools = {
+        "pop": ["Fmaj7", "G7", "Em7", "Am7"], # 王道進行
+        "jazz": ["Cmaj7", "A7", "Dm7", "G7"],
+        "rock": ["Am", "F", "C", "G"],
+        "ambient": ["Am7", "Fmaj7", "Cmaj7", "G6"]
+    }
+    # マイナーキー進行
+    minor_verse_pools = {
+        "pop": ["Am", "Em", "F", "C"],
+        "jazz": ["Dm7", "G7", "Am7", "E7"],
+        "rock": ["Am", "G", "F", "E7"], # アンダルシア進行
+        "ambient": ["Am7", "Dm7", "Fmaj7", "Em7"]
+    }
+    minor_chorus_pools = {
+        "pop": ["Am", "F", "C", "G"], # 小室進行 / マイナーポップ
+        "jazz": ["Am7", "D7", "Gmaj7", "Cmaj7"],
+        "rock": ["F", "G", "Am", "Am"],
+        "ambient": ["Fmaj7", "G6", "Am7", "Em7"]
     }
     
-    pool = minor_pools if key_mode == "minor" else major_pools
-    
-    # スタイルに応じたセクション進行の割り当て
-    if style in ("lofi", "jazz"):
-        verse_chords = pool["lofi_jazz"]
-        chorus_chords = pool["lofi_jazz"]
-    elif style == "ambient":
-        verse_chords = pool["ambient"]
-        chorus_chords = pool["ambient"]
+    style_mapped = style.lower() if style.lower() in ("pop", "jazz", "rock", "ambient") else "pop"
+    if style.lower() == "lofi":
+        style_mapped = "jazz"
+        
+    if key_mode == "minor":
+        verse_chords = minor_verse_pools[style_mapped]
+        chorus_chords = minor_chorus_pools[style_mapped]
     else:
-        verse_chords = pool["andalusian"] if key_mode == "minor" else pool["royal_road"]
-        chorus_chords = pool["minor_pop"] if key_mode == "minor" else pool["pop"]
+        verse_chords = major_verse_pools[style_mapped]
+        chorus_chords = major_chorus_pools[style_mapped]
 
+    # Bメロ（Bridge）用コード進行：サビへの緊張感を高める進行（サブドミナントから開始など）
+    bridge_chords = [verse_chords[2], verse_chords[3], chorus_chords[0], chorus_chords[1]]
+    
     # 毎回異なるコード進行にするため、Cメジャー/Aマイナーからランダムにキー転調 (Transposition Offset) を施す
     key_offset = random.randint(-5, 6)
     
@@ -154,7 +168,7 @@ def get_song_structure(total_bars_needed: int, key_mode: str, style: str) -> Lis
         sections_layout.append({"name": "verse", "bars": total_bars_needed // 2, "chords": verse_chords, "intensity": "low"})
         sections_layout.append({"name": "chorus", "bars": total_bars_needed - (total_bars_needed // 2), "chords": chorus_chords, "intensity": "high"})
     else:
-        # 長尺：イントロ ➡ Aメロ（静か） ➡ サビ（盛り上がり） ➡ 間奏 ➡ サビ ➡ アウトロ（静か）
+        # 長尺：イントロ ➡ Aメロ ➡ Bメロ ➡ サビ ➡ 間奏 ➡ Aメロ ➡ Bメロ ➡ サビ ➡ アウトロ
         intro_bars = 4
         outro_bars = 4
         middle_bars = total_bars_needed - intro_bars - outro_bars
@@ -166,12 +180,16 @@ def get_song_structure(total_bars_needed: int, key_mode: str, style: str) -> Lis
         while current_middle < middle_bars:
             remaining = middle_bars - current_middle
             
-            if cycle % 2 == 0:
+            if cycle % 3 == 0:
                 # Aメロ (Verse)
                 bars = min(8, remaining)
                 sections_layout.append({"name": "verse", "bars": bars, "chords": verse_chords, "intensity": "low"})
+            elif cycle % 3 == 1:
+                # Bメロ (Bridge) - 中間的な盛り上がり
+                bars = min(4, remaining)
+                sections_layout.append({"name": "bridge", "bars": bars, "chords": bridge_chords, "intensity": "medium"})
             else:
-                # サビ (Chorus)
+                # サビ (Chorus) - 最大の盛り上がり
                 bars = min(8, remaining)
                 sections_layout.append({"name": "chorus", "bars": bars, "chords": chorus_chords, "intensity": "high"})
                 
@@ -192,7 +210,6 @@ def get_song_structure(total_bars_needed: int, key_mode: str, style: str) -> Lis
             "key_offset": key_offset
         })
         current_bar += sec["bars"]
-        
     return final_sections
 
 def expand_chord_plan_to_midi(plan: Dict[str, Any], duration_minutes: float) -> MidiComposition:

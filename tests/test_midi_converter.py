@@ -83,7 +83,11 @@ def test_midi_schema_validation():
     with pytest.raises(ValidationError):
         MidiComposition(**invalid_data_pitch)
 
-def test_bidirectional_conversion():
+from unittest.mock import patch
+
+@patch("random.randint", return_value=0)
+@patch("random.uniform", return_value=0.0)
+def test_bidirectional_conversion(mock_uniform, mock_randint):
     # Simple composition setup
     comp = MidiComposition(
         tempo_bpm=80,

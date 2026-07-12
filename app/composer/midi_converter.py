@@ -56,19 +56,58 @@ def json_to_midi(composition: MidiComposition) -> bytes:
 
         inst = pretty_midi.Instrument(program=program, is_drum=is_drum, name=track.track_name)
         
-        # 音符を追加
+        # 音符を整理して同時打鍵（コード）を検出する
+        from collections import defaultdict
+        import random
+        
+        step_groups = defaultdict(list)
         for note_data in track.notes:
-            start_time = steps_to_seconds(note_data.step, composition.tempo_bpm)
-            end_time = steps_to_seconds(note_data.step + note_data.duration_steps, composition.tempo_bpm)
+            step_groups[note_data.step].append(note_data)
             
-            note = pretty_midi.Note(
-                velocity=note_data.velocity,
-                pitch=note_data.pitch,
-                start=start_time,
-                end=end_time
-            )
-            inst.notes.append(note)
+        is_guitar_prog = (24 <= program <= 31)
+        is_piano_prog = (program <= 7)
+        
+        for step, group in sorted(step_groups.items()):
+            # 和音時のずらし（アルペジエーター／ストラミング効果）のため、ピッチの低い順にソート
+            group.sort(key=lambda n: n.pitch)
             
+            for i, note_data in enumerate(group):
+                start_time = steps_to_seconds(note_data.step, composition.tempo_bpm)
+                end_time = steps_to_seconds(note_data.step + note_data.duration_steps, composition.tempo_bpm)
+                
+                # 1. 音量（Velocity）の人間らしさ：ランダムに微小変化を加える
+                vel = note_data.velocity + random.randint(-6, 6)
+                vel = max(1, min(127, vel))
+                
+                # 2. マイクロタイミングのゆらぎとコードのストラミング
+                if not is_drum:
+                    # 全般的な打鍵タイミングの微細なゆらぎ (±10ms程度)
+                    timing_offset = random.uniform(-0.010, 0.010)
+                    
+                    if is_guitar_prog and len(group) > 1:
+                        # ギターのストラミング（ジャカラン効果）：低い弦から順にタイミングをわずかに遅らせる (15ms間隔)
+                        timing_offset += i * random.uniform(0.012, 0.018)
+                    elif is_piano_prog and len(group) > 1:
+                        # ピアノの両手による同時打鍵のわずかなバラつき
+                        timing_offset += i * random.uniform(0.004, 0.007)
+                        
+                    start_time = max(0.0, start_time + timing_offset)
+                    end_time = max(start_time + 0.05, end_time + timing_offset)
+                else:
+                    # ドラム：クオンタイズを保ちつつ、ハイハットのみ僅かにゆらす (グルーヴ感)
+                    if note_data.pitch == 42:
+                        timing_offset = random.uniform(-0.004, 0.004)
+                        start_time = max(0.0, start_time + timing_offset)
+                        end_time = max(start_time + 0.02, end_time + timing_offset)
+                
+                note = pretty_midi.Note(
+                    velocity=vel,
+                    pitch=note_data.pitch,
+                    start=start_time,
+                    end=end_time
+                )
+                inst.notes.append(note)
+                
         pm.instruments.append(inst)
         
     # バイナリデータに書き出し
