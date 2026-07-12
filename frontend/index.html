@@ -1,34 +1,122 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>AI Background Music Maker (ABMM)</title>
-  <style>
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", sans-serif;
-      background: #14161a;
-      color: #f2f2f2;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      height: 100vh;
-      margin: 0;
-    }
-    .card {
-      text-align: center;
-      padding: 2rem 3rem;
-      border-radius: 12px;
-      background: #1f232b;
-      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
-    }
-    h1 { font-size: 1.4rem; margin-bottom: 0.5rem; }
-    p { color: #9aa0a6; font-size: 0.9rem; }
-  </style>
+  <!-- Google Fonts Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <div class="card">
-    <h1>🎵 AI Background Music Maker (ABMM)</h1>
-    <p>ビルドパイプライン検証用の雛形画面です。今後ここに実際のUIを実装します。</p>
+  <div class="app-container">
+    <!-- Header -->
+    <header class="app-header">
+      <div class="logo">
+        <span class="icon">🎵</span>
+        <h1>AI Background Music Maker <span class="badge">ABMM</span></h1>
+      </div>
+      <p class="subtitle">自然言語の指示とパラメータから、著作権フリーのBGMをローカル生成</p>
+    </header>
+
+    <div class="main-layout">
+      <!-- Left Panel: Input & Controls -->
+      <section class="panel controls-panel">
+        <h2 class="panel-title">作曲パラメータ指示</h2>
+        
+        <!-- Text Prompt -->
+        <div class="input-group">
+          <label for="prompt-input">曲の雰囲気・構成指示（自然言語）</label>
+          <textarea id="prompt-input" placeholder="例: 雨上がりの午後、少し切ないローファイジャズ。イントロは静かなピアノ、途中からアコギが入って展開する穏やかな雰囲気。"></textarea>
+        </div>
+
+        <!-- Slider Parameters -->
+        <div class="sliders-section">
+          <div class="slider-group">
+            <div class="slider-header">
+              <label for="tempo-slider">テンポ (BPM)</label>
+              <span id="tempo-value" class="slider-val">80</span>
+            </div>
+            <input type="range" id="tempo-slider" min="60" max="120" value="80" step="1">
+          </div>
+
+          <div class="slider-group">
+            <div class="slider-header">
+              <label for="duration-slider">曲の長さ (分)</label>
+              <span id="duration-value" class="slider-val">1.0</span>
+            </div>
+            <input type="range" id="duration-slider" min="0.5" max="5.0" value="1.0" step="0.5">
+          </div>
+
+          <!-- Key Selection -->
+          <div class="input-group toggle-group">
+            <label>雰囲気の明るさ (明るい / 切ない)</label>
+            <div class="toggle-buttons">
+              <button type="button" id="key-major-btn" class="toggle-btn active">Major (明るい)</button>
+              <button type="button" id="key-minor-btn" class="toggle-btn">Minor (切ない)</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Action Button -->
+        <button id="compose-btn" class="primary-btn">
+          <span class="btn-text">🎵 作曲してプレビューを生成 (Phase 1)</span>
+          <div class="spinner hidden" id="btn-spinner"></div>
+        </button>
+      </section>
+
+      <!-- Right Panel: Results & Preview -->
+      <section class="panel preview-panel">
+        <h2 class="panel-title">プレビュー再生・生成結果</h2>
+
+        <!-- Status Card -->
+        <div class="status-card" id="status-card">
+          <div class="status-placeholder" id="status-placeholder">
+            <div class="pulsing-music-icon">🎧</div>
+            <p>パラメータを設定して「作曲してプレビューを生成」ボタンを押してください。</p>
+          </div>
+          
+          <div class="status-content hidden" id="status-content">
+            <div class="success-badge">生成成功</div>
+            <div class="meta-info">
+              <div class="meta-item">
+                <span class="meta-label">テンポ:</span>
+                <span class="meta-val" id="res-tempo">-</span>
+              </div>
+              <div class="meta-item">
+                <span class="meta-label">キー:</span>
+                <span class="meta-val" id="res-key">-</span>
+              </div>
+              <div class="meta-item">
+                <span class="meta-label">長さ:</span>
+                <span class="meta-val" id="res-duration">-</span>
+              </div>
+            </div>
+
+            <!-- Tracks Details -->
+            <div class="tracks-list-container">
+              <h3>生成されたMIDIトラック</h3>
+              <ul class="tracks-list" id="tracks-list">
+                <!-- Dynamically populated -->
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <!-- Audio Player Card -->
+        <div class="player-card" id="player-card">
+          <div class="player-header">
+            <h3>プレビュープレイヤー</h3>
+            <span class="player-badge">SoundFont合成 (Lite)</span>
+          </div>
+          <audio id="audio-preview" controls></audio>
+        </div>
+      </section>
+    </div>
   </div>
+
+  <script src="app.js"></script>
 </body>
 </html>

@@ -36,14 +36,14 @@
 - [x] 2.9 エラーがあれば修正し、git commit を実行する
 
 ### Phase 3: FluidSynthによるプレビュー再生とUI基礎 (Phase A - MVPの完結)
-- [ ] 3.1 `pyfluidsynth` を `requirements.txt` に追加し、インストール。Mac環境での動作・SoundFont配置を確認
-- [ ] 3.2 MIDIファイル/JSONをSoundFontで即座に音声化(WAV/バッファ)するプレビュー再生エンジンを実装 ([renderer_lite.py](file:///Users/hiroshi/dev/abmm/app/render/renderer_lite.py))
-- [ ] 3.3 `pywebview` から呼び出すPythonバックエンドAPI / ハンドラーモジュールを実装 ([handlers.py](file:///Users/hiroshi/dev/abmm/app/api/handlers.py))
-- [ ] 3.4 フロントエンドUIの基礎レイアウトを作成（自然言語入力欄、Phase 1 作曲実行ボタン、再生ボタン） ([index.html](file:///Users/hiroshi/dev/abmm/frontend/index.html), [app.js](file:///Users/hiroshi/dev/abmm/frontend/app.js))
-- [ ] 3.5 `pywebview` でのPython側APIとJavaScript間のブリッジ通信・イベントハンドリングの設定
-- [ ] 3.6 UIからの作曲実行 → MIDI生成 → FluidSynthによるプレビュー再生の結合テストコード・シナリオを作成 (`tests/test_integration_mvp.py`)
-- [ ] 3.7 ビルドの実行およびテストを実行し、エラーがないことを確認する
-- [ ] 3.8 エラーがあれば修正し、git commit を実行する
+- [x] 3.1 `pyfluidsynth` を `requirements.txt` に追加し、インストール。Mac環境での動作・SoundFont配置を確認
+- [x] 3.2 MIDIファイル/JSONをSoundFontで即座に音声化(WAV/バッファ)するプレビュー再生エンジンを実装 ([renderer_lite.py](file:///Users/hiroshi/dev/abmm/app/render/renderer_lite.py))
+- [x] 3.3 `pywebview` から呼び出すPythonバックエンドAPI / ハンドラーモジュールを実装 ([handlers.py](file:///Users/hiroshi/dev/abmm/app/api/handlers.py))
+- [x] 3.4 フロントエンドUIの基礎レイアウトを作成（自然言語入力欄、Phase 1 作曲実行ボタン、再生ボタン） ([index.html](file:///Users/hiroshi/dev/abmm/frontend/index.html), [app.js](file:///Users/hiroshi/dev/abmm/frontend/app.js))
+- [x] 3.5 `pywebview` でのPython側APIとJavaScript間のブリッジ通信・イベントハンドリングの設定
+- [x] 3.6 UIからの作曲実行 → MIDI生成 → FluidSynthによるプレビュー再生の結合テストコード・シナリオを作成 (`tests/test_integration_mvp.py`)
+- [x] 3.7 ビルドの実行およびテストを実行し、エラーがないことを確認する
+- [x] 3.8 エラーがあれば修正し、git commit を実行する
 
 ### Phase 4: パラメータ統合とスライダー制御 (Phase B - 自然言語＋スライダー本実装)
 - [ ] 4.1 スライダー値（テンポ、明るさ、エネルギー、密度、空間感、各楽器の比率等）のデータモデルおよびAPIパラメータ仕様を定義

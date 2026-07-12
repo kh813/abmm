@@ -25,8 +25,10 @@ def resource_path(relative_path: str) -> str:
 
 def main() -> None:
     import webview  # pywebview
+    from app.api.handlers import WebviewApi
 
     index_path = resource_path(os.path.join("frontend", "index.html"))
+    api = WebviewApi()
 
     webview.create_window(
         "AI Background Music Maker (ABMM)",
@@ -34,6 +36,7 @@ def main() -> None:
         width=1000,
         height=700,
         min_size=(800, 600),
+        js_api=api
     )
     webview.start()
 
