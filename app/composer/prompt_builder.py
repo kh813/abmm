@@ -101,6 +101,17 @@ Energy (Dynamics/Volume): {energy}
 Density (Note count): {density}
 Instrument Balance Weights: {inst_str}
 
+Musical Rules to Apply:
+1. Scale and Atmosphere (Key Mode & Brightness):
+   - key_mode = 'major' / brightness >= 0.5: Use a major scale (e.g. C major: pitches 60, 62, 64, 65, 67, 69, 71). Create a bright, happy, peaceful, or uplifiting sound.
+   - key_mode = 'minor' / brightness < 0.5: Use a natural/harmonic minor scale (e.g. A minor: pitches 57, 59, 60, 62, 64, 65, 67/68). Create a sad, dark, emotional, or mysterious sound.
+2. Velocity and Intensity (Energy):
+   - Energy controls the note velocity and drum presence. High energy ({energy} >= 0.7) should have louder notes (velocity 90-110) and a steady, driving drum track. Low energy ({energy} < 0.3) should have soft notes (velocity 50-70) and no or very sparse drums.
+3. Rhythm and Duration (Density):
+   - Density controls how frequently notes occur. High density ({density} >= 0.7) should have many notes spaced by 2 or 4 steps (8th or 16th notes). Low density ({density} < 0.3) should have fewer, longer notes (whole/half notes spaced by 8 or 16 steps, duration 8-16 steps).
+4. Instrument Allocation (Weights):
+   - Allocate tracks based on the instrument weights. If an instrument has a weight of 0.0, do NOT create a track for it. Give the track with the highest weight the main melody/most notes.
+
 Please generate a corresponding JSON output.
 {FEW_SHOT_EXAMPLES}
 """

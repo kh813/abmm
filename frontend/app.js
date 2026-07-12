@@ -8,6 +8,28 @@ document.addEventListener("DOMContentLoaded", () => {
   
   const keyMajorBtn = document.getElementById("key-major-btn");
   const keyMinorBtn = document.getElementById("key-minor-btn");
+
+  // New parameter sliders
+  const brightnessSlider = document.getElementById("brightness-slider");
+  const brightnessValue = document.getElementById("brightness-value");
+  const energySlider = document.getElementById("energy-slider");
+  const energyValue = document.getElementById("energy-value");
+  const densitySlider = document.getElementById("density-slider");
+  const densityValue = document.getElementById("density-value");
+  const reverbSlider = document.getElementById("reverb-slider");
+  const reverbValue = document.getElementById("reverb-value");
+
+  // Instrument sliders
+  const instPiano = document.getElementById("inst-piano");
+  const instPianoValue = document.getElementById("inst-piano-value");
+  const instGuitar = document.getElementById("inst-guitar");
+  const instGuitarValue = document.getElementById("inst-guitar-value");
+  const instDrums = document.getElementById("inst-drums");
+  const instDrumsValue = document.getElementById("inst-drums-value");
+  const instPad = document.getElementById("inst-pad");
+  const instPadValue = document.getElementById("inst-pad-value");
+  const instBass = document.getElementById("inst-bass");
+  const instBassValue = document.getElementById("inst-bass-value");
   
   const composeBtn = document.getElementById("compose-btn");
   const btnSpinner = document.getElementById("btn-spinner");
@@ -30,6 +52,39 @@ document.addEventListener("DOMContentLoaded", () => {
 
   durationSlider.addEventListener("input", (e) => {
     durationValue.textContent = parseFloat(e.target.value).toFixed(1);
+  });
+
+  brightnessSlider.addEventListener("input", (e) => {
+    brightnessValue.textContent = parseFloat(e.target.value).toFixed(1);
+  });
+
+  energySlider.addEventListener("input", (e) => {
+    energyValue.textContent = parseFloat(e.target.value).toFixed(1);
+  });
+
+  densitySlider.addEventListener("input", (e) => {
+    densityValue.textContent = parseFloat(e.target.value).toFixed(1);
+  });
+
+  reverbSlider.addEventListener("input", (e) => {
+    reverbValue.textContent = parseFloat(e.target.value).toFixed(1);
+  });
+
+  // 楽器スライダー
+  instPiano.addEventListener("input", (e) => {
+    instPianoValue.textContent = parseFloat(e.target.value).toFixed(1);
+  });
+  instGuitar.addEventListener("input", (e) => {
+    instGuitarValue.textContent = parseFloat(e.target.value).toFixed(1);
+  });
+  instDrums.addEventListener("input", (e) => {
+    instDrumsValue.textContent = parseFloat(e.target.value).toFixed(1);
+  });
+  instPad.addEventListener("input", (e) => {
+    instPadValue.textContent = parseFloat(e.target.value).toFixed(1);
+  });
+  instBass.addEventListener("input", (e) => {
+    instBassValue.textContent = parseFloat(e.target.value).toFixed(1);
   });
 
   // キー（Major/Minor）トグルボタンの挙動
@@ -55,6 +110,19 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const tempo = parseInt(tempoSlider.value);
     const duration = parseFloat(durationSlider.value);
+    const brightness = parseFloat(brightnessSlider.value);
+    const energy = parseFloat(energySlider.value);
+    const density = parseFloat(densitySlider.value);
+    const reverbSpace = parseFloat(reverbSlider.value);
+
+    // 楽器バランス辞書の構築
+    const instruments = {
+      piano: parseFloat(instPiano.value),
+      guitar: parseFloat(instGuitar.value),
+      drums: parseFloat(instDrums.value),
+      pad: parseFloat(instPad.value),
+      bass: parseFloat(instBass.value)
+    };
 
     // 処理中のローディング状態に変更
     composeBtn.disabled = true;
@@ -69,8 +137,18 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     try {
-      // Python側の API を呼び出す
-      const response = await pywebview.api.compose_and_preview(description, tempo, keyMode, duration);
+      // Python側の API を呼び出す（拡張パラメータをすべて引き渡す）
+      const response = await pywebview.api.compose_and_preview(
+        description,
+        tempo,
+        keyMode,
+        duration,
+        brightness,
+        energy,
+        density,
+        reverbSpace,
+        instruments
+      );
       
       if (response.status === "success") {
         // プレースホルダーを隠し、生成結果を表示

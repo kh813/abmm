@@ -491,3 +491,65 @@ audio {
   outline: none;
   filter: invert(0.9) hue-rotate(180deg); /* Style the native player to match dark mode */
 }
+
+/* Scrollable Controls Container */
+.controls-content {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  padding-right: 0.5rem;
+}
+
+.controls-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.controls-content::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.controls-content::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 9999px;
+}
+
+/* Instrument Balance Panel */
+.instrument-balance {
+  background-color: rgba(0, 0, 0, 0.12);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.sub-section-title {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 0.5rem;
+  margin-bottom: 0.25rem;
+}
+
+.slider-group.compact {
+  gap: 0.25rem;
+}
+
+.slider-group.compact .slider-header {
+  font-size: 0.8rem;
+}
+
+.slider-group.compact input[type="range"] {
+  height: 4px;
+}
+
+.slider-group.compact input[type="range"]::-webkit-slider-thumb {
+  width: 12px;
+  height: 12px;
+  box-shadow: 0 0 4px var(--primary-accent);
+}
+

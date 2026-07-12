@@ -20,9 +20,20 @@ class WebviewApi:
         self.preview_wav_path = os.path.join(self.frontend_dir, "temp_preview.wav")
         self.last_composition = None
 
-    def compose_and_preview(self, description: str, tempo: int, key_mode: str, duration: float) -> Dict[str, Any]:
+    def compose_and_preview(
+        self,
+        description: str,
+        tempo: int,
+        key_mode: str,
+        duration: float,
+        brightness: float = 0.5,
+        energy: float = 0.5,
+        density: float = 0.5,
+        reverb_space: float = 0.5,
+        instruments: Optional[Dict[str, float]] = None
+    ) -> Dict[str, Any]:
         """
-        自然言語入力とスライダーの基本パラメータに基づき MIDI JSON を生成し、
+        自然言語入力と各種パラメータに基づき MIDI JSON を生成し、
         FluidSynthでWAVプレビューファイルをレンダリングする統合処理。
         """
         try:
@@ -32,7 +43,11 @@ class WebviewApi:
                 description=description,
                 tempo_bpm=int(tempo),
                 key_mode=key_mode,
-                duration_minutes=float(duration)
+                duration_minutes=float(duration),
+                brightness=float(brightness),
+                energy=float(energy),
+                density=float(density),
+                instruments=instruments
             )
             self.last_composition = composition
 

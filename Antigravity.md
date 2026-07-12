@@ -46,14 +46,14 @@
 - [x] 3.8 エラーがあれば修正し、git commit を実行する
 
 ### Phase 4: パラメータ統合とスライダー制御 (Phase B - 自然言語＋スライダー本実装)
-- [ ] 4.1 スライダー値（テンポ、明るさ、エネルギー、密度、空間感、各楽器の比率等）のデータモデルおよびAPIパラメータ仕様を定義
-- [ ] 4.2 スライダー値と自然言語指示を融合してLLMプロンプトを組み立てるロジックの強化 ([prompt_builder.py](file:///Users/hiroshi/dev/abmm/app/composer/prompt_builder.py))
-- [ ] 4.3 テンポやキー情報をMIDIメタデータおよび音符生成ルール（スケール制限等）に反映するロジックの実装
-- [ ] 4.4 フロントエンドUIに各種スライダーおよびコントロール群を追加 ([index.html](file:///Users/hiroshi/dev/abmm/frontend/index.html), [style.css](file:///Users/hiroshi/dev/abmm/frontend/style.css), [app.js](file:///Users/hiroshi/dev/abmm/frontend/app.js))
-- [ ] 4.5 スライダー変更時のリアルタイム・サブミット時のパラメータ送信処理の実装
-- [ ] 4.6 各種パラメータ（テンポ・キー等）がプロンプトおよび生成MIDIに正しく反映されるかを検証するテストコードを作成 (`tests/test_parameters.py`)
-- [ ] 4.7 ビルドの実行およびテストを実行し、エラーがないことを確認する
-- [ ] 4.8 エラーがあれば修正し、git commit を実行する
+- [x] 4.1 スライダー値（テンポ、明るさ、エネルギー、密度、空間感、各楽器の比率等）のデータモデルおよびAPIパラメータ仕様を定義
+- [x] 4.2 スライダー値と自然言語指示を融合してLLMプロンプトを組み立てるロジックの強化 ([prompt_builder.py](file:///Users/hiroshi/dev/abmm/app/composer/prompt_builder.py))
+- [x] 4.3 テンポやキー情報をMIDIメタデータおよび音符生成ルール（スケール制限等）に反映するロジックの実装
+- [x] 4.4 フロントエンドUIに各種スライダーおよびコントロール群を追加 ([index.html](file:///Users/hiroshi/dev/abmm/frontend/index.html), [style.css](file:///Users/hiroshi/dev/abmm/frontend/style.css), [app.js](file:///Users/hiroshi/dev/abmm/frontend/app.js))
+- [x] 4.5 スライダー変更時のリアルタイム・サブミット時のパラメータ送信処理の実装
+- [x] 4.6 各種パラメータ（テンポ・キー等）がプロンプトおよび生成MIDIに正しく反映されるかを検証するテストコードを作成 (`tests/test_parameters.py`)
+- [x] 4.7 ビルドの実行およびテストを実行し、エラーがないことを確認する
+- [x] 4.8 エラーがあれば修正し、git commit を実行する
 
 ### Phase 5: ハードウェア検出とレンダラー抽象化 (Phase C - レンダリングフェーズ軽量版)
 - [ ] 5.1 ハードウェア情報検出モジュールを実装し、Apple Siliconの世代・メモリ容量を取得 ([hardware_detect.py](file:///Users/hiroshi/dev/abmm/app/render/hardware_detect.py))
