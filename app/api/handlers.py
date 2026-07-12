@@ -728,6 +728,7 @@ class WebviewApi:
     def get_ollama_candidates(self):
         """ハードウェア推奨マーク付きのOllamaモデル定義リストを取得する"""
         specs = detect_hardware_spec()
+        host_ram = specs.get("memory_gb", 8.0)
         recommended_models = specs.get("recommended_llm_models", [])
         
         candidates = self.model_manager.get_ollama_models()
@@ -735,16 +736,23 @@ class WebviewApi:
         for cand in candidates:
             name = cand["name"]
             label = cand["label"]
+            min_ram = cand.get("min_ram_gb", 0.0)
+            
             is_recommended = name in recommended_models
+            # 搭載RAMが最小必要RAM未満の場合は選択不可（無効化）にする
+            disabled = host_ram < min_ram
             
             # 推奨モデルにはラベルに (推奨) を付加
             if is_recommended and "推奨" not in label:
                 label = label.replace(name, f"{name} (推奨)")
+            if disabled:
+                label += " [スペック不足]"
                 
             result.append({
                 "name": name,
                 "label": label,
-                "is_recommended": is_recommended
+                "is_recommended": is_recommended,
+                "disabled": disabled
             })
         return result
 

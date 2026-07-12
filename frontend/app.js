@@ -549,6 +549,9 @@ document.addEventListener("DOMContentLoaded", () => {
         const opt = document.createElement("option");
         opt.value = cand.name;
         opt.textContent = cand.label;
+        if (cand.disabled) {
+          opt.disabled = true;
+        }
         if (cand.name === currentVal) {
           opt.selected = true;
         }

@@ -106,4 +106,5 @@ def test_get_ollama_candidates():
         assert "name" in c
         assert "label" in c
         assert "is_recommended" in c
+        assert "disabled" in c
 
