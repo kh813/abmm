@@ -58,7 +58,7 @@ coll = COLLECT(
 app = BUNDLE(
     coll,
     name='ABMM.app',
-    icon=None,
+    icon='assets/AppIcon.icns',
     bundle_identifier='com.abmm.desktop',
     info_plist={
         'CFBundleDisplayName': 'AI Background Music Maker',

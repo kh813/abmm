@@ -368,8 +368,11 @@ class WebviewApi:
         
         file_types = ('WAV Files (*.wav)',) if export_format == "wav" else ('MP3 Files (*.mp3)',)
         
-        music_dir = os.path.expanduser("~/Music")
-        if not os.path.exists(music_dir):
+        # デフォルト保存先を ~/Music/ABMM に設定し、存在しない場合は自動作成する
+        music_dir = os.path.expanduser("~/Music/ABMM")
+        try:
+            os.makedirs(music_dir, exist_ok=True)
+        except Exception:
             music_dir = os.path.expanduser("~")
             
         file_path = self.window.create_file_dialog(
