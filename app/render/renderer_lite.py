@@ -48,6 +48,11 @@ class LiteRenderer(BaseRenderer):
         """
         self.ensure_soundfont()
         
+        # カスタムSoundFontパスのオーバーライドチェック
+        sf_path = self.soundfont_path
+        if params and "soundfont_path" in params:
+            sf_path = params["soundfont_path"]
+            
         # 一時MIDIファイルの作成
         with tempfile.NamedTemporaryFile(suffix=".mid", delete=False) as temp_midi:
             temp_midi.write(midi_bytes)
@@ -63,7 +68,7 @@ class LiteRenderer(BaseRenderer):
                 "-T", "wav",
                 "-g", "1.5",
                 "-ni",
-                self.soundfont_path,
+                sf_path,
                 temp_midi_name,
                 "-r", str(sample_rate)
             ]

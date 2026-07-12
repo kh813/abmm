@@ -70,8 +70,12 @@ class NeuralRenderer(BaseRenderer):
                 raise InterruptedError("Rendering cancelled before output writing.")
 
             # 最終的なオーディオ波形書き出し処理
-            # 現バージョンでは合成ロジックとして Lite 変換結果を書き出し、正常動作を担保
-            self.lite_renderer.render(midi_bytes, output_path, params)
+            # ダウンロードされたプレミアムSoundFontのパスを取得してオーバーライドする
+            sf_path = self.model_manager.get_model_path(tier)
+            render_params = params.copy()
+            render_params["soundfont_path"] = sf_path
+            
+            self.lite_renderer.render(midi_bytes, output_path, render_params)
             
             if progress_callback:
                 progress_callback(1.0)

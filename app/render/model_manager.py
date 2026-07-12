@@ -7,16 +7,16 @@ CACHE_DIR = os.path.expanduser("~/Library/Caches/ABMM/models")
 
 MODEL_CONFIGS = {
     "Standard": {
-        "repo": "mlx-community/midi-to-audio-standard",
-        "filename": "model.safetensors",
-        "size_mb": 420.0,
-        "url": "https://huggingface.co/mlx-community/midi-to-audio-standard/resolve/main/model.safetensors"
+        "repo": "fewtarius/generaluser-gs",
+        "filename": "GeneralUser_GS_v1.471.sf2",
+        "size_mb": 30.5,
+        "url": "https://github.com/fewtarius/generaluser-gs/raw/master/GeneralUser%20GS%20v1.471.sf2"
     },
     "High Quality": {
-        "repo": "mlx-community/midi-to-audio-high",
-        "filename": "model.safetensors",
-        "size_mb": 1200.0,
-        "url": "https://huggingface.co/mlx-community/midi-to-audio-high/resolve/main/model.safetensors"
+        "repo": "Arcriser/hummify-assets",
+        "filename": "FluidR3_GM.sf2",
+        "size_mb": 141.0,
+        "url": "https://huggingface.co/datasets/Arcriser/hummify-assets/resolve/main/FluidR3_GM.sf2"
     }
 }
 

@@ -13,7 +13,7 @@ def temp_cache_dir(tmp_path):
 def test_model_manager_paths(temp_cache_dir):
     manager = ModelManager(cache_dir=temp_cache_dir)
     standard_path = manager.get_model_path("Standard")
-    assert standard_path == os.path.join(temp_cache_dir, "Standard", "model.safetensors")
+    assert standard_path == os.path.join(temp_cache_dir, "Standard", "GeneralUser_GS_v1.471.sf2")
 
     with pytest.raises(ValueError):
         manager.get_model_path("NonExistentTier")
