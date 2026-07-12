@@ -66,16 +66,16 @@
 - [x] 5.8 エラーがあれば修正し、git commit を実行する
 
 ### Phase 6: ニューラルレンダラーとプレビューレンダリング (Phase D - レンダリングフェーズ ニューラルモデル)
-- [ ] 6.1 音声生成用ニューラルモデル（MLX等）を実行するための関連ライブラリを `requirements.txt` に追加し、インストール
-- [ ] 6.2 `renderer_neural` を実装し、ニューラルモデルによるMIDIから音声波形へのレンダリング推論ロジックを実装 ([renderer_neural.py](file:///Users/hiroshi/dev/abmm/app/render/renderer_neural.py))
-- [ ] 6.3 モデルのダウンロード・キャッシュ管理・プレビュー用/本番用の切替ロジックを実装 ([model_manager.py](file:///Users/hiroshi/dev/abmm/app/render/model_manager.py))
-- [ ] 6.4 本番書き出し前の「数十秒プレビューレンダリング」機能の実装
-- [ ] 6.5 プレビュー用モデルと本番用モデルの個別設定および品質パラメータの調整ロジックの実装
-- [ ] 6.6 レンダリング処理の非同期実行（バックグラウンドスレッド/タスク）およびプログレスバー用の進捗通知API・UI実装
-- [ ] 6.7 レンダリング処理の安全な「キャンセル」機能の実装（UI・スレッド処理の連動）
-- [ ] 6.8 ニューラルレンダラー、モデルマネージャー、およびキャンセル処理に対するテストコードを作成 (`tests/test_neural_renderer.py`)
-- [ ] 6.9 ビルドの実行およびテストを実行し、エラーがないことを確認する
-- [ ] 6.10 エラーがあれば修正し、git commit を実行する
+- [x] 6.1 音声生成用ニューラルモデル（MLX等）を実行するための関連ライブラリを `requirements.txt` に追加し、インストール
+- [x] 6.2 `renderer_neural` を実装し、ニューラルモデルによるMIDIから音声波形へのレンダリング推論ロジックを実装 ([renderer_neural.py](file:///Users/hiroshi/dev/abmm/app/render/renderer_neural.py))
+- [x] 6.3 モデルのダウンロード・キャッシュ管理・プレビュー用/本番用の切替ロジックを実装 ([model_manager.py](file:///Users/hiroshi/dev/abmm/app/render/model_manager.py))
+- [x] 6.4 本番書き出し前の「数十秒プレビューレンダリング」機能の実装
+- [x] 6.5 プレビュー用モデルと本番用モデルの個別設定および品質パラメータの調整ロジックの実装
+- [x] 6.6 レンダリング処理の非同期実行（バックグラウンドスレッド/タスク）およびプログレスバー用の進捗通知API・UI実装
+- [x] 6.7 レンダリング処理の安全な「キャンセル」機能の実装（UI・スレッド処理の連動）
+- [x] 6.8 ニューラルレンダラー、モデルマネージャー、およびキャンセル処理に対するテストコードを作成 (`tests/test_neural_renderer.py`)
+- [x] 6.9 ビルドの実行およびテストを実行し、エラーがないことを確認する
+- [x] 6.10 エラーがあれば修正し、git commit を実行する
 
 ### Phase 7: 長尺書き出しとポストプロセス (Phase E - 仕上げその1)
 - [ ] 7.1 指定された長尺（最大60分）に合わせたMIDIセクションの追加生成または自動ループ化ロジックを実装 ([loop_export.py](file:///Users/hiroshi/dev/abmm/app/postprocess/loop_export.py))

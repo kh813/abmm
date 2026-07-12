@@ -30,7 +30,7 @@ def main() -> None:
     index_path = resource_path(os.path.join("frontend", "index.html"))
     api = WebviewApi()
 
-    webview.create_window(
+    window = webview.create_window(
         "AI Background Music Maker (ABMM)",
         index_path,
         width=1000,
@@ -38,7 +38,9 @@ def main() -> None:
         min_size=(800, 600),
         js_api=api
     )
+    api.set_window(window)
     webview.start()
+
 
 
 if __name__ == "__main__":
