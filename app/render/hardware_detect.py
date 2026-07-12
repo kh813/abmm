@@ -83,9 +83,22 @@ def detect_hardware_spec() -> Dict[str, Any]:
         else:
             recommended_tier = "Standard"
             
+    # RAM量に応じた推奨Ollamaモデルの決定
+    if mem_gb < 15.5:
+        recommended_llms = ["llama3.2:3b"]
+    elif mem_gb < 31.5:
+        recommended_llms = ["llama3.2:3b", "qwen2.5-coder:7b", "gemma2:9b"]
+    elif mem_gb < 63.5:
+        recommended_llms = ["qwen2.5-coder:14b", "gemma2:27b", "mistral:7b"]
+    elif mem_gb < 127.5:
+        recommended_llms = ["qwen2.5:32b", "llama3:70b"]
+    else:
+        recommended_llms = ["llama3:70b", "command-r-plus"]
+
     return {
         "cpu_brand": cpu,
         "memory_gb": round(mem_gb, 1),
         "max_duration_minutes": max_duration,
-        "recommended_model_tier": recommended_tier
+        "recommended_model_tier": recommended_tier,
+        "recommended_llm_models": recommended_llms
     }

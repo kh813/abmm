@@ -314,6 +314,9 @@ document.addEventListener("DOMContentLoaded", () => {
       exportDuration.value = maxDur;
       exportDurationValue.textContent = Math.round(maxDur);
     }
+    
+    // PCスペックに応じて推奨マーク付きのモデルドロップダウンを構築・再構築する
+    populateOllamaModelSelect();
   }
 
   // Preset DOM elements
@@ -531,11 +534,52 @@ document.addEventListener("DOMContentLoaded", () => {
   // Ollama モデルおよび接続管理
   let ollamaConnected = false;
   let ollamaInstalledModels = [];
+  let ollamaDropdownPopulated = false;
+
+  async function populateOllamaModelSelect() {
+    if (typeof pywebview === "undefined" || !pywebview.api || !pywebview.api.get_ollama_candidates) {
+      return;
+    }
+    try {
+      const candidates = await pywebview.api.get_ollama_candidates();
+      const currentVal = ollamaModelSelect.value;
+      ollamaModelSelect.innerHTML = "";
+      
+      candidates.forEach(cand => {
+        const opt = document.createElement("option");
+        opt.value = cand.name;
+        opt.textContent = cand.label;
+        if (cand.name === currentVal) {
+          opt.selected = true;
+        }
+        ollamaModelSelect.appendChild(opt);
+      });
+      
+      if (!ollamaModelSelect.value && candidates.length > 0) {
+        const recommended = candidates.find(c => c.is_recommended);
+        if (recommended) {
+          ollamaModelSelect.value = recommended.name;
+        } else {
+          ollamaModelSelect.value = candidates[0].name;
+        }
+        if (pywebview.api.set_ollama_model) {
+          await pywebview.api.set_ollama_model(ollamaModelSelect.value);
+        }
+      }
+      ollamaDropdownPopulated = true;
+    } catch (err) {
+      console.error("Failed to populate Ollama candidates select:", err);
+    }
+  }
 
   async function checkOllamaStatus() {
     if (typeof pywebview === "undefined" || !pywebview.api || !pywebview.api.check_ollama_status) {
       window.addEventListener("pywebviewready", checkOllamaStatus, { once: true });
       return;
+    }
+
+    if (!ollamaDropdownPopulated) {
+      await populateOllamaModelSelect();
     }
 
     try {

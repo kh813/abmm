@@ -68,6 +68,9 @@ class WebviewApi:
         self.preset_manager = PresetManager()
         self.settings_path = os.path.expanduser("~/Library/Application Support/ABMM/settings.json")
         self._download_cancel_requested = False
+        
+        # バックグラウンドでオンラインモデル設定ファイルを更新
+        threading.Thread(target=self.model_manager.update_config_online, daemon=True).start()
 
     def set_window(self, window):
         """pywebviewのウィンドウインスタンスを紐づける"""
@@ -721,4 +724,27 @@ class WebviewApi:
             return result
         except Exception as e:
             return {"status": "error", "message": str(e)}
+
+    def get_ollama_candidates(self):
+        """ハードウェア推奨マーク付きのOllamaモデル定義リストを取得する"""
+        specs = detect_hardware_spec()
+        recommended_models = specs.get("recommended_llm_models", [])
+        
+        candidates = self.model_manager.get_ollama_models()
+        result = []
+        for cand in candidates:
+            name = cand["name"]
+            label = cand["label"]
+            is_recommended = name in recommended_models
+            
+            # 推奨モデルにはラベルに (推奨) を付加
+            if is_recommended and "推奨" not in label:
+                label = label.replace(name, f"{name} (推奨)")
+                
+            result.append({
+                "name": name,
+                "label": label,
+                "is_recommended": is_recommended
+            })
+        return result
 

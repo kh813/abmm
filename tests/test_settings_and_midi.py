@@ -95,3 +95,15 @@ def test_import_midi_file(mock_pretty_midi, mock_midi_to_json, mock_json_to_midi
         m_open.assert_called_once_with("/path/to/midi.mid", "rb")
         mock_midi_to_json.assert_called_once_with(b"midi_file_data", duration_minutes=2.0)
         api.lite_renderer.render.assert_called_once_with(b"midi_binary", api.preview_wav_path)
+
+def test_get_ollama_candidates():
+    api = WebviewApi()
+    candidates = api.get_ollama_candidates()
+    assert isinstance(candidates, list)
+    assert len(candidates) > 0
+    # verify schema of candidates
+    for c in candidates:
+        assert "name" in c
+        assert "label" in c
+        assert "is_recommended" in c
+

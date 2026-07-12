@@ -204,8 +204,35 @@ def expand_chord_plan_to_midi(plan: Dict[str, Any], duration_minutes: float) -> 
     target_seconds = duration_minutes * 60.0
     total_bars_needed = max(4, int(target_seconds / seconds_per_bar))
     
-    # 曲のセクション構成を動的に生成
-    sections = get_song_structure(total_bars_needed, key_mode, style)
+    # カスタムDSL進行指定のチェック
+    custom_chords = plan.get("custom_chords")
+    if custom_chords:
+        custom_bars = plan.get("custom_bars") or len(custom_chords)
+        key_offset = 0 # DSL指定時は転調を行わない
+        
+        sections = []
+        current_bar = 0
+        while current_bar < total_bars_needed:
+            remaining_bars = total_bars_needed - current_bar
+            section_bars = min(custom_bars, remaining_bars)
+            if section_bars <= 0:
+                break
+                
+            name = "verse" if (current_bar // custom_bars) % 2 == 0 else "chorus"
+            intensity = "low" if name == "verse" else "high"
+            
+            sections.append({
+                "name": name,
+                "start_bar": current_bar,
+                "bars": section_bars,
+                "chords": custom_chords,
+                "intensity": intensity,
+                "key_offset": key_offset
+            })
+            current_bar += section_bars
+    else:
+        # 曲のセクション構成を動的に生成
+        sections = get_song_structure(total_bars_needed, key_mode, style)
 
     # 各楽器トラックごとのノート生成
     track_notes: Dict[str, List[MidiNote]] = {
@@ -340,6 +367,44 @@ def expand_chord_plan_to_midi(plan: Dict[str, Any], duration_minutes: float) -> 
         tracks=tracks
     )
 
+import re
+
+def parse_dsl_description(description: str) -> Optional[Dict[str, Any]]:
+    """
+    ユーザーの自然言語指示の中に DSL 形式 [Am7 -> D7 -> Gmaj7 -> Cmaj7 : 4 bars : style=jazz] があるか確認し、
+    パースして辞書を返す。なければ None。
+    """
+    match = re.search(r'\[([^\]]+)\]', description)
+    if not match:
+        return None
+        
+    dsl_content = match.group(1).strip()
+    parts = [p.strip() for p in dsl_content.split(':')]
+    
+    # 進行の抽出
+    chord_part = parts[0]
+    chords = [c.strip() for c in re.split(r'->| |,', chord_part) if c.strip()]
+    if not chords:
+        return None
+        
+    result = {
+        "custom_chords": chords
+    }
+    
+    # オプション（小節数、スタイル）のパース
+    for part in parts[1:]:
+        part_lower = part.lower()
+        if "bars" in part_lower or "bar" in part_lower:
+            bar_match = re.search(r'(\d+)', part_lower)
+            if bar_match:
+                result["custom_bars"] = int(bar_match.group(1))
+        elif "style=" in part_lower:
+            result["style"] = part.split('=')[1].strip()
+        elif part_lower in ("lofi", "jazz", "pop", "ambient", "rock"):
+            result["style"] = part_lower
+            
+    return result
+
 def generate_midi_json(
     client: OllamaClient,
     description: str,
@@ -355,6 +420,26 @@ def generate_midi_json(
     """
     Ollama経由でLLMに高次のコード構成案を生成させ、それをPython側で展開して完全なMidiCompositionを構築する。
     """
+    # 1. DSL構文のチェックとバイパス
+    dsl_plan = parse_dsl_description(description)
+    if dsl_plan:
+        print(f"[DSL Composer] Custom chord progression detected: {dsl_plan}")
+        inst_list = ["piano", "guitar", "bass", "drums"]
+        if instruments:
+            inst_list = [k for k, v in instruments.items() if v > 0.0]
+            if not inst_list:
+                inst_list = ["piano"]
+                
+        plan = {
+            "tempo_bpm": tempo_bpm,
+            "key_mode": key_mode,
+            "style": dsl_plan.get("style", "lofi"),
+            "instruments": inst_list,
+            "custom_chords": dsl_plan["custom_chords"],
+            "custom_bars": dsl_plan.get("custom_bars")
+        }
+        return expand_chord_plan_to_midi(plan, duration_minutes)
+
     prompt = build_prompt(
         description=description,
         tempo_bpm=tempo_bpm,

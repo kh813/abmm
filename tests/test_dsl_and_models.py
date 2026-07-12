@@ -1,0 +1,52 @@
+import pytest
+from app.composer.prompt_builder import parse_dsl_description, generate_midi_json, expand_chord_plan_to_midi
+from app.render.hardware_detect import detect_hardware_spec, get_total_memory_gb
+from unittest.mock import MagicMock
+
+def test_parse_dsl_description():
+    # Standard format
+    desc = "A nice piece [Am7 -> D7 -> Gmaj7 -> Cmaj7 : 4 bars : style=jazz]"
+    res = parse_dsl_description(desc)
+    assert res is not None
+    assert res["custom_chords"] == ["Am7", "D7", "Gmaj7", "Cmaj7"]
+    assert res["custom_bars"] == 4
+    assert res["style"] == "jazz"
+
+    # Space separators
+    desc2 = "[C F G C]"
+    res2 = parse_dsl_description(desc2)
+    assert res2 is not None
+    assert res2["custom_chords"] == ["C", "F", "G", "C"]
+    assert "custom_bars" not in res2
+
+    # Empty
+    assert parse_dsl_description("Just natural language without brackets") is None
+
+def test_dsl_midi_generation():
+    client = MagicMock()
+    # If DSL is detected, client.generate should NOT be called at all!
+    desc = "[Am7 D7 Gmaj7 Cmaj7 : 4 bars : style=jazz]"
+    composition = generate_midi_json(
+        client=client,
+        description=desc,
+        tempo_bpm=90,
+        key_mode="minor",
+        duration_minutes=1.0,
+        instruments={"piano": 1.0, "guitar": 1.0, "bass": 0.0, "drums": 0.0}
+    )
+    
+    # Verify no LLM call was made
+    client.generate.assert_not_called()
+    
+    assert composition.tempo_bpm == 90
+    # piano and guitar should be included, bass and drums skipped
+    track_ids = [t.track_id for t in composition.tracks]
+    assert "track_piano" in track_ids
+    assert "track_guitar" in track_ids
+    assert "track_bass" not in track_ids
+
+def test_detect_hardware_spec_llms():
+    specs = detect_hardware_spec()
+    assert "recommended_llm_models" in specs
+    assert isinstance(specs["recommended_llm_models"], list)
+    assert len(specs["recommended_llm_models"]) > 0
