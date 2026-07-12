@@ -19,6 +19,14 @@ document.addEventListener("DOMContentLoaded", () => {
   const progressBarFill = document.getElementById("progress-bar-fill");
   const cancelRenderBtn = document.getElementById("cancel-render-btn");
 
+  // Phase 2 Export elements
+  const exportCard = document.getElementById("export-card");
+  const exportDuration = document.getElementById("export-duration");
+  const exportDurationValue = document.getElementById("export-duration-value");
+  const exportFormat = document.getElementById("export-format");
+  const exportModelTier = document.getElementById("export-model-tier");
+  const exportBtn = document.getElementById("export-btn");
+
   const tempoSlider = document.getElementById("tempo-slider");
   const tempoValue = document.getElementById("tempo-value");
   const durationSlider = document.getElementById("duration-slider");
@@ -225,6 +233,9 @@ document.addEventListener("DOMContentLoaded", () => {
     if (response.status === "success") {
       statusPlaceholder.classList.add("hidden");
       statusContent.classList.remove("hidden");
+      if (exportCard) {
+        exportCard.classList.remove("hidden");
+      }
       
       resTempo.textContent = `${response.tempo_bpm} BPM`;
       resKey.textContent = response.key_mode === "major" ? "Major (明るい)" : "Minor (切ない)";
@@ -286,11 +297,18 @@ document.addEventListener("DOMContentLoaded", () => {
     // 曲の長さスライダーの最大値をスペック上限に変更
     const maxDur = specs.max_duration_minutes;
     durationSlider.max = maxDur;
+    if (exportDuration) {
+      exportDuration.max = maxDur;
+    }
     
     // 現在値が上限を超えている場合は強制調整
     if (parseFloat(durationSlider.value) > maxDur) {
       durationSlider.value = maxDur;
       durationValue.textContent = parseFloat(maxDur).toFixed(1);
+    }
+    if (exportDuration && parseFloat(exportDuration.value) > maxDur) {
+      exportDuration.value = maxDur;
+      exportDurationValue.textContent = Math.round(maxDur);
     }
   }
 
@@ -466,6 +484,10 @@ document.addEventListener("DOMContentLoaded", () => {
         audioPreview.load();
         audioPreview.play().catch(e => console.log("Autoplay prevented:", e));
 
+        if (exportCard) {
+          exportCard.classList.remove("hidden");
+        }
+
         alert(`プリセット '${response.name}' をロードし、プレビューを読み込みました。`);
       } else {
         alert(`プリセットの読み込みに失敗しました: ${response.message}`);
@@ -616,6 +638,67 @@ document.addEventListener("DOMContentLoaded", () => {
   
   // 起動時のチェック
   checkOllamaStatus();
+
+  // 書き出し時間スライダーの値更新のリスナー
+  if (exportDuration) {
+    exportDuration.addEventListener("input", (e) => {
+      exportDurationValue.textContent = e.target.value;
+    });
+  }
+
+  // 書き出しボタンのリスナー
+  if (exportBtn) {
+    exportBtn.addEventListener("click", async () => {
+      if (typeof pywebview === "undefined" || !pywebview.api || !pywebview.api.select_export_file || !pywebview.api.start_export_async) {
+        alert("APIが利用できません。");
+        return;
+      }
+      
+      const format = exportFormat.value;
+      const durationVal = parseFloat(exportDuration.value);
+      const tier = exportModelTier.value;
+      
+      // 1. ファイル選択ダイアログを表示
+      const exportPath = await pywebview.api.select_export_file(format);
+      if (!exportPath) {
+        return; // ユーザーキャンセル
+      }
+      
+      // 2. モーダル表示
+      cancelRenderBtn.classList.add("hidden");
+      progressStatusText.textContent = "書き出しファイルを生成中...";
+      progressBarFill.style.width = "0%";
+      progressPercent.textContent = "0%";
+      progressCard.classList.remove("hidden");
+      
+      const params = {
+        export_path: exportPath,
+        export_duration: durationVal,
+        export_format: format,
+        model_tier: tier
+      };
+      
+      const response = await pywebview.api.start_export_async(params);
+      if (response.status !== "success") {
+        alert(`書き出し開始エラー: ${response.message}`);
+        progressCard.classList.add("hidden");
+        cancelRenderBtn.classList.remove("hidden");
+      }
+    });
+  }
+
+  // 音声書き出し完了・エラーのコールバック
+  window.onExportComplete = (response) => {
+    progressCard.classList.add("hidden");
+    cancelRenderBtn.classList.remove("hidden");
+    alert(`本番用BGMの書き出しが完了しました！\n保存先: ${response.export_path}`);
+  };
+
+  window.onExportError = (err) => {
+    progressCard.classList.add("hidden");
+    cancelRenderBtn.classList.remove("hidden");
+    alert(`書き出しエラーが発生しました:\n${err}`);
+  };
 
   // 初期ロード呼び出し
   loadPresetList();

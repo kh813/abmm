@@ -259,6 +259,44 @@
           </div>
           <audio id="audio-preview" controls></audio>
         </div>
+
+        <!-- Phase 2 Audio Export Card -->
+        <div class="export-card hidden" id="export-card">
+          <h3 class="sub-section-title">📦 本番音声の書き出し (Phase 2)</h3>
+          
+          <div class="export-settings">
+            <div class="slider-group compact">
+              <div class="slider-header">
+                <label for="export-duration">書き出し時間 (分)</label>
+                <span id="export-duration-value" class="slider-val">10</span>
+              </div>
+              <input type="range" id="export-duration" min="1" max="60" value="10" step="1">
+            </div>
+            
+            <div class="export-options-row">
+              <div class="input-group">
+                <label for="export-format">出力形式:</label>
+                <select id="export-format">
+                  <option value="wav">WAV (高音質)</option>
+                  <option value="mp3">MP3 (軽量)</option>
+                </select>
+              </div>
+              
+              <div class="input-group">
+                <label for="export-model-tier">モデルティア:</label>
+                <select id="export-model-tier">
+                  <option value="Lite">Lite (最速・SoundFont)</option>
+                  <option value="Standard" selected>Standard (推奨・ニューラル)</option>
+                  <option value="High Quality">High Quality (高品質ニューラル)</option>
+                </select>
+              </div>
+            </div>
+          </div>
+          
+          <button id="export-btn" class="primary-btn">
+            <span class="btn-text">🚀 本番レンダリング＆書き出し</span>
+          </button>
+        </div>
       </section>
     </div>
   </div>

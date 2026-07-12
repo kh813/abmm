@@ -12,6 +12,7 @@ from app.render.model_manager import ModelManager
 from app.render.hardware_detect import detect_hardware_spec
 from app.composer.midi_schema import MidiComposition
 from app.presets.preset_manager import PresetManager
+from app.postprocess.loop_export import process_and_export_bgm
 
 def trim_composition_to_seconds(composition: MidiComposition, seconds: float) -> MidiComposition:
     """
@@ -58,6 +59,7 @@ class WebviewApi:
             self.base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
         self.frontend_dir = os.path.join(self.base_dir, "frontend")
         self.preview_wav_path = os.path.join(self.frontend_dir, "temp_preview.wav")
+        self.temp_export_wav_path = os.path.join(self.frontend_dir, "temp_export.wav")
         
         self.last_composition = None
         self.window = None
@@ -357,3 +359,86 @@ class WebviewApi:
         """Ollamaクライアントのアクティブモデルを設定する"""
         self.llm_client.model = model_name
         return {"status": "success", "model": model_name}
+
+    def select_export_file(self, export_format):
+        """保存先ファイルを選択するダイアログを表示する"""
+        if not self.window:
+            return None
+        
+        file_types = ('WAV Files (*.wav)',) if export_format == "wav" else ('MP3 Files (*.mp3)',)
+        
+        file_path = self.window.create_file_dialog(
+            dialog_type=1, # SAVE_FILE_DIALOG
+            file_types=file_types,
+            save_filename=f"background_music.{export_format}"
+        )
+        if file_path:
+            if isinstance(file_path, (list, tuple)):
+                return file_path[0] if len(file_path) > 0 else None
+            return file_path
+        return None
+
+    def start_export_async(self, params):
+        """本番レンダリング＆ループ処理を非同期で開始する"""
+        threading.Thread(
+            target=self._async_export_worker,
+            args=(params,),
+            daemon=True
+        ).start()
+        return {"status": "success"}
+
+    def _async_export_worker(self, params):
+        try:
+            export_path = params.get("export_path")
+            export_duration_minutes = float(params.get("export_duration", 10.0))
+            export_format = params.get("export_format", "wav")
+            model_tier = params.get("model_tier", "Standard")
+
+            if not self.last_composition:
+                raise ValueError("MIDI組成が存在しません。先に作曲を行ってください。")
+
+            self._notify_status("本番レンダリング中...")
+            self._notify_progress(0.0)
+
+            # 1. MIDIバイナリの変換
+            midi_bytes = json_to_midi(self.last_composition)
+            self._notify_progress(0.1)
+
+            # 2. 本番用のレンダリング
+            def render_progress_cb(p: float):
+                # 進行状況を 0.1 から 0.7 までの範囲にスケーリング
+                scaled_val = 0.1 + p * 0.6
+                self._notify_progress(scaled_val)
+
+            render_params = {
+                "model_tier": model_tier,
+                "progress_callback": render_progress_cb
+            }
+            self.neural_renderer.render(midi_bytes, self.temp_export_wav_path, render_params)
+            
+            # 3. ループ処理と書き出し
+            self._notify_status("ループ＆フェード処理中...")
+            self._notify_progress(0.75)
+
+            target_duration_seconds = export_duration_minutes * 60.0
+            
+            process_and_export_bgm(
+                input_wav_path=self.temp_export_wav_path,
+                output_path=export_path,
+                target_duration_seconds=target_duration_seconds,
+                export_format=export_format
+            )
+            
+            self._notify_progress(1.0)
+            result = {
+                "status": "success",
+                "export_path": export_path
+            }
+            if self.window:
+                self.window.evaluate_js(f"onExportComplete({json.dumps(result)})")
+
+        except Exception as e:
+            print(f"[handlers] Export worker failed: {e}")
+            if self.window:
+                self.window.evaluate_js(f"onExportError({json.dumps(str(e))})")
+
