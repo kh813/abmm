@@ -25,15 +25,15 @@
 - [x] 1.8 エラーがあれば修正し、git commit を実行する
 
 ### Phase 2: Ollama連携とLLMによるMIDI JSON生成 (Phase A - MVPの一部)
-- [ ] 2.1 Ollama APIクライアント共通モジュールを実装 ([llm_client.py](file:///Users/hiroshi/dev/abmm/app/api/llm_client.py))
-- [ ] 2.2 MIDI生成のためのFew-shotプロンプトの基礎テンプレートを作成 ([prompt_builder.py](file:///Users/hiroshi/dev/abmm/app/composer/prompt_builder.py))
-- [ ] 2.3 自然言語の指示からスキーマ準拠 of MIDI JSONを生成するロジックを実装 ([prompt_builder.py](file:///Users/hiroshi/dev/abmm/app/composer/prompt_builder.py) の `generate_midi_json`)
-- [ ] 2.4 生成されたJSONに対するスキーマバリデーション（Pydantic等）を実装
-- [ ] 2.5 スキーマエラー・JSONパースエラー発生時の自動リトライ・プロンプト補正ロジックを実装
-- [ ] 2.6 パース失敗が続いた場合のフォールバック用デフォルトMIDI（4小節ループ）生成ロジックを実装
-- [ ] 2.7 Phase 2 の機能（Ollama連携・パース・リトライ）に対するテストコードを作成 (`tests/test_llm_client.py`)
-- [ ] 2.8 ビルドの実行およびテストを実行し、エラーがないことを確認する
-- [ ] 2.9 エラーがあれば修正し、git commit を実行する
+- [x] 2.1 Ollama APIクライアント共通モジュールを実装 ([llm_client.py](file:///Users/hiroshi/dev/abmm/app/api/llm_client.py))
+- [x] 2.2 MIDI生成のためのFew-shotプロンプトの基礎テンプレートを作成 ([prompt_builder.py](file:///Users/hiroshi/dev/abmm/app/composer/prompt_builder.py))
+- [x] 2.3 自然言語の指示からスキーマ準拠 of MIDI JSONを生成するロジックを実装 ([prompt_builder.py](file:///Users/hiroshi/dev/abmm/app/composer/prompt_builder.py) の `generate_midi_json`)
+- [x] 2.4 生成されたJSONに対するスキーマバリデーション（Pydantic等）を実装
+- [x] 2.5 スキーマエラー・JSONパースエラー発生時の自動リトライ・プロンプト補正ロジックを実装
+- [x] 2.6 パース失敗が続いた場合のフォールバック用デフォルトMIDI（4小節ループ）生成ロジックを実装
+- [x] 2.7 Phase 2 の機能（Ollama連携・パース・リトライ）に対するテストコードを作成 (`tests/test_llm_client.py`)
+- [x] 2.8 ビルドの実行およびテストを実行し、エラーがないことを確認する
+- [x] 2.9 エラーがあれば修正し、git commit を実行する
 
 ### Phase 3: FluidSynthによるプレビュー再生とUI基礎 (Phase A - MVPの完結)
 - [ ] 3.1 `pyfluidsynth` を `requirements.txt` に追加し、インストール。Mac環境での動作・SoundFont配置を確認
