@@ -574,17 +574,18 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     try {
-      modelDownloadBtn.classList.add("hidden");
-      modelDownloadBar.classList.remove("hidden");
+      // モーダルダイアログの表示と設定
+      cancelRenderBtn.classList.add("hidden"); // ダウンロード中はキャンセルできないように隠す
+      progressStatusText.textContent = `モデル '${selectedModel}' をダウンロード中...`;
+      progressBarFill.style.width = "0%";
+      progressPercent.textContent = "0%";
+      progressCard.classList.remove("hidden");
+
       ollamaModelSelect.disabled = true;
-      modelDownloadFill.style.width = "0%";
-      modelDownloadStatus.textContent = "ダウンロード開始中...";
-      
       await pywebview.api.start_ollama_model_download(selectedModel);
     } catch (err) {
       alert(`ダウンロード開始エラー: ${err}`);
-      modelDownloadBtn.classList.remove("hidden");
-      modelDownloadBar.classList.add("hidden");
+      progressCard.classList.add("hidden");
       ollamaModelSelect.disabled = false;
     }
   });
@@ -592,13 +593,15 @@ document.addEventListener("DOMContentLoaded", () => {
   // Ollamaモデルダウンロードのコールバック
   window.onOllamaDownloadProgress = (modelName, percent, status) => {
     const roundedPercent = Math.round(percent * 100);
-    modelDownloadFill.style.width = roundedPercent + "%";
-    modelDownloadStatus.textContent = `${status} (${roundedPercent}%)`;
+    progressBarFill.style.width = roundedPercent + "%";
+    progressPercent.textContent = roundedPercent + "%";
+    progressStatusText.textContent = `モデル '${modelName}' をダウンロード中: ${status}`;
   };
 
   window.onOllamaDownloadComplete = (modelName, success) => {
     ollamaModelSelect.disabled = false;
-    modelDownloadBar.classList.add("hidden");
+    progressCard.classList.add("hidden");
+    cancelRenderBtn.classList.remove("hidden"); // キャンセルボタンを元に戻す
     
     if (success) {
       alert(`モデル '${modelName}' のダウンロードが完了しました！`);
