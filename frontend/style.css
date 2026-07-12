@@ -35,8 +35,6 @@ body {
 .app-container {
   width: 100vw;
   height: 100vh;
-  max-width: 1200px;
-  max-height: 800px;
   display: flex;
   flex-direction: column;
   padding: 1.5rem;

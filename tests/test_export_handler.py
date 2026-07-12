@@ -4,6 +4,8 @@ from unittest.mock import MagicMock, patch
 from app.api.handlers import WebviewApi
 from app.composer.midi_schema import MidiComposition
 
+import webview
+
 def test_select_export_file():
     api = WebviewApi()
     api.window = MagicMock()
@@ -14,7 +16,7 @@ def test_select_export_file():
     path = api.select_export_file("wav")
     assert path == "/path/to/exported_file.wav"
     api.window.create_file_dialog.assert_called_once_with(
-        dialog_type=1,
+        dialog_type=webview.SAVE_DIALOG,
         file_types=('WAV Files (*.wav)',),
         save_filename='background_music.wav'
     )

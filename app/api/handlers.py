@@ -2,6 +2,7 @@ import os
 import sys
 import json
 import threading
+import webview
 from typing import Dict, Any, Optional
 from app.api.llm_client import OllamaClient
 from app.composer.prompt_builder import generate_midi_json
@@ -368,7 +369,7 @@ class WebviewApi:
         file_types = ('WAV Files (*.wav)',) if export_format == "wav" else ('MP3 Files (*.mp3)',)
         
         file_path = self.window.create_file_dialog(
-            dialog_type=1, # SAVE_FILE_DIALOG
+            dialog_type=webview.SAVE_DIALOG,
             file_types=file_types,
             save_filename=f"background_music.{export_format}"
         )

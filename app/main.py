@@ -33,8 +33,8 @@ def main() -> None:
     window = webview.create_window(
         "AI Background Music Maker (ABMM)",
         index_path,
-        width=1000,
-        height=700,
+        width=1280,
+        height=800,
         min_size=(800, 600),
         js_api=api
     )
