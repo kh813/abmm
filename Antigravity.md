@@ -56,14 +56,14 @@
 - [x] 4.8 エラーがあれば修正し、git commit を実行する
 
 ### Phase 5: ハードウェア検出とレンダラー抽象化 (Phase C - レンダリングフェーズ軽量版)
-- [ ] 5.1 ハードウェア情報検出モジュールを実装し、Apple Siliconの世代・メモリ容量を取得 ([hardware_detect.py](file:///Users/hiroshi/dev/abmm/app/render/hardware_detect.py))
-- [ ] 5.2 検出したスペックに基づき「動作可能モデルティアの判定」および「レンダリング可能な曲の長さ上限」を算出するロジックを実装
-- [ ] 5.3 フロントエンドUI側で「曲の長さ」スライダー可動域および警告表示の動的制御を実装
-- [ ] 5.4 レンダラー共通インターフェースクラスを設計・定義 ([renderer_base.py](file:///Users/hiroshi/dev/abmm/app/render/renderer_base.py))
-- [ ] 5.5 `renderer_lite` (FluidSynth) を `renderer_base` インターフェースに適合するようにリファクタリング
-- [ ] 5.6 スペック判定およびレンダラーの抽象化インターフェース動作を確認するテストコードを作成 (`tests/test_hardware_and_base.py`)
-- [ ] 5.7 ビルドの実行およびテストを実行し、エラーがないことを確認する
-- [ ] 5.8 エラーがあれば修正し、git commit を実行する
+- [x] 5.1 ハードウェア情報検出モジュールを実装し、Apple Siliconの世代・メモリ容量を取得 ([hardware_detect.py](file:///Users/hiroshi/dev/abmm/app/render/hardware_detect.py))
+- [x] 5.2 検出したスペックに基づき「動作可能モデルティアの判定」および「レンダリング可能な曲の長さ上限」を算出するロジックを実装
+- [x] 5.3 フロントエンドUI側で「曲の長さ」スライダー可動域および警告表示の動的制御を実装
+- [x] 5.4 レンダラー共通インターフェースクラスを設計・定義 ([renderer_base.py](file:///Users/hiroshi/dev/abmm/app/render/renderer_base.py))
+- [x] 5.5 `renderer_lite` (FluidSynth) を `renderer_base` インターフェースに適合するようにリファクタリング
+- [x] 5.6 スペック判定およびレンダラーの抽象化インターフェース動作を確認するテストコードを作成 (`tests/test_hardware_and_base.py`)
+- [x] 5.7 ビルドの実行およびテストを実行し、エラーがないことを確認する
+- [x] 5.8 エラーがあれば修正し、git commit を実行する
 
 ### Phase 6: ニューラルレンダラーとプレビューレンダリング (Phase D - レンダリングフェーズ ニューラルモデル)
 - [ ] 6.1 音声生成用ニューラルモデル（MLX等）を実行するための関連ライブラリを `requirements.txt` に追加し、インストール

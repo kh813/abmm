@@ -4,6 +4,7 @@ from app.api.llm_client import OllamaClient
 from app.composer.prompt_builder import generate_midi_json
 from app.composer.midi_converter import json_to_midi
 from app.render.renderer_lite import LiteRenderer
+from app.render.hardware_detect import detect_hardware_spec
 
 class WebviewApi:
     """
@@ -86,3 +87,16 @@ class WebviewApi:
         if self.last_composition:
             return self.last_composition.model_dump()
         return None
+
+    def get_hardware_specs(self) -> Dict[str, Any]:
+        """PCのスペック情報、推奨モデルティア、長さ上限を取得する"""
+        try:
+            return detect_hardware_spec()
+        except Exception as e:
+            return {
+                "cpu_brand": "Unknown (Error)",
+                "memory_gb": 8.0,
+                "max_duration_minutes": 15.0,
+                "recommended_model_tier": "Lite",
+                "error": str(e)
+            }

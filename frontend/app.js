@@ -197,4 +197,40 @@ document.addEventListener("DOMContentLoaded", () => {
       btnSpinner.classList.add("hidden");
     }
   });
+
+  // PCのスペック情報を取得・UIに反映する関数
+  async function initHardwareSpecs() {
+    if (typeof pywebview !== "undefined" && pywebview.api && pywebview.api.get_hardware_specs) {
+      try {
+        const specs = await pywebview.api.get_hardware_specs();
+        updateHardwareUI(specs);
+      } catch (err) {
+        console.error("Failed to get hardware specs:", err);
+      }
+    } else {
+      // APIブリッジがまだロードされていない場合はイベントを待機する
+      window.addEventListener("pywebviewready", initHardwareSpecs, { once: true });
+    }
+  }
+
+  function updateHardwareUI(specs) {
+    const specText = document.getElementById("spec-text");
+    if (!specText) return;
+    
+    specText.innerHTML = `検出スペック: <strong>${specs.cpu_brand} (${specs.memory_gb}GB RAM)</strong> → 推奨: <strong>${specs.recommended_model_tier}</strong> / 最大長: <strong>${specs.max_duration_minutes}分</strong>`;
+    
+    // 曲の長さスライダーの最大値をスペック上限に変更
+    const maxDur = specs.max_duration_minutes;
+    durationSlider.max = maxDur;
+    
+    // 現在値が上限を超えている場合は強制調整
+    if (parseFloat(durationSlider.value) > maxDur) {
+      durationSlider.value = maxDur;
+      durationValue.textContent = parseFloat(maxDur).toFixed(1);
+    }
+  }
+
+  // アプリ起動時にスペック検出を実行
+  initHardwareSpecs();
 });
+

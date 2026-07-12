@@ -553,3 +553,25 @@ audio {
   box-shadow: 0 0 4px var(--primary-accent);
 }
 
+/* Hardware Info Bar */
+.hardware-info-bar {
+  background-color: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 0.6rem 0.8rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.hardware-info-bar .info-icon {
+  filter: drop-shadow(0 0 4px rgba(255,255,255,0.2));
+}
+
+.hardware-info-bar strong {
+  color: var(--text-primary);
+}
+
+
