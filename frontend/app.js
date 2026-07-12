@@ -673,7 +673,7 @@ document.addEventListener("DOMContentLoaded", () => {
       }
       
       // 2. モーダル表示
-      cancelRenderBtn.classList.add("hidden");
+      cancelRenderBtn.classList.remove("hidden");
       progressStatusText.textContent = "書き出しファイルを生成中...";
       progressBarFill.style.width = "0%";
       progressPercent.textContent = "0%";
@@ -807,7 +807,7 @@ document.addEventListener("DOMContentLoaded", () => {
               dlBtn.textContent = "DL";
               dlBtn.addEventListener("click", async () => {
                 try {
-                  cancelRenderBtn.classList.add("hidden");
+                  cancelRenderBtn.classList.remove("hidden");
                   progressStatusText.textContent = `モデル '${model.name}' をダウンロード中...`;
                   progressBarFill.style.width = "0%";
                   progressPercent.textContent = "0%";

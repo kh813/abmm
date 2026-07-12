@@ -44,7 +44,7 @@ class ModelManager:
         path = self.get_model_path(tier)
         return os.path.exists(path) and os.path.getsize(path) > 1024 * 1024 # 最小サイズ検証 (1MB以上)
 
-    def download_model(self, tier: str, progress_callback: Optional[Callable[[float], None]] = None) -> bool:
+    def download_model(self, tier: str, progress_callback: Optional[Callable[[float], None]] = None, is_cancelled: Optional[Callable[[], bool]] = None) -> bool:
         """
         指定されたティアのモデルファイルをHuggingFace等からダウンロードする。
         """
@@ -69,6 +69,8 @@ class ModelManager:
                 
                 with open(dest_path + ".tmp", "wb") as f:
                     while True:
+                        if is_cancelled and is_cancelled():
+                            raise InterruptedError("ダウンロードがキャンセルされました。")
                         block = response.read(block_size)
                         if not block:
                             break

@@ -67,6 +67,7 @@ class WebviewApi:
         self.render_thread = None
         self.preset_manager = PresetManager()
         self.settings_path = os.path.expanduser("~/Library/Application Support/ABMM/settings.json")
+        self._download_cancel_requested = False
 
     def set_window(self, window):
         """pywebviewのウィンドウインスタンスを紐づける"""
@@ -107,6 +108,7 @@ class WebviewApi:
         except Exception as e:
             print(f"[handlers] Disk space check failed: {e}")
 
+        self._download_cancel_requested = False
         download_thread = threading.Thread(
             target=self._async_download_worker,
             args=(tier,),
@@ -120,13 +122,18 @@ class WebviewApi:
             if self.window:
                 self.window.evaluate_js(f"onDownloadProgress({json.dumps(tier)}, {percent})")
                 
-        success = self.model_manager.download_model(tier, progress_callback=prog_cb)
+        success = self.model_manager.download_model(
+            tier, 
+            progress_callback=prog_cb, 
+            is_cancelled=lambda: self._download_cancel_requested
+        )
         if self.window:
             self.window.evaluate_js(f"onDownloadComplete({json.dumps(tier)}, {json.dumps(success)})")
 
     def cancel_render(self):
-        """現在進行中のレンダリング処理をキャンセルする"""
+        """現在進行中のレンダリングまたはダウンロード処理をキャンセルする"""
         self.neural_renderer.cancel()
+        self._download_cancel_requested = True
         return {"status": "success", "message": "Cancellation request sent"}
 
     def start_render_async(self, params):
