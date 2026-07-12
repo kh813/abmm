@@ -336,11 +336,12 @@ class WebviewApi:
 
     def start_ollama_model_download(self, model_name):
         """非同期でOllamaのモデルダウンロードを開始する"""
-        threading.Thread(
+        t = threading.Thread(
             target=self._async_ollama_download_worker,
             args=(model_name,),
             daemon=True
         )
+        t.start()
         return {"status": "success"}
 
     def _async_ollama_download_worker(self, model_name):
