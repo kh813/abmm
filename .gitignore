@@ -29,6 +29,7 @@ dist/
 *.wav
 *.mp3
 *.m4a
+assets/
 
 # IDEs
 .vscode/

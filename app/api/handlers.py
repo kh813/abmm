@@ -10,6 +10,7 @@ from app.render.renderer_neural import NeuralRenderer
 from app.render.model_manager import ModelManager
 from app.render.hardware_detect import detect_hardware_spec
 from app.composer.midi_schema import MidiComposition
+from app.presets.preset_manager import PresetManager
 
 def trim_composition_to_seconds(composition: MidiComposition, seconds: float) -> MidiComposition:
     """
@@ -57,6 +58,7 @@ class WebviewApi:
         self.last_composition = None
         self.window = None
         self.render_thread = None
+        self.preset_manager = PresetManager()
 
     def set_window(self, window) -> None:
         """pywebviewのウィンドウインスタンスを紐づける"""
@@ -257,5 +259,66 @@ class WebviewApi:
                 "tracks": tracks_info,
                 "audio_url": "temp_preview.wav"
             }
+        except Exception as e:
+            return {"status": "error", "message": str(e)}
+
+    def save_preset(self, name: str, params: Dict[str, Any]) -> Dict[str, Any]:
+        """現在の作曲結果とパラメータをプリセットに保存する"""
+        if not self.last_composition:
+            return {"status": "error", "message": "保存する作曲データがありません。先に作曲を実行してください。"}
+        try:
+            key = self.preset_manager.save_preset(name, params, self.last_composition)
+            return {"status": "success", "key": key}
+        except Exception as e:
+            return {"status": "error", "message": str(e)}
+
+    def list_presets(self) -> List[Dict[str, Any]]:
+        """保存されたプリセット一覧を取得する"""
+        try:
+            return self.preset_manager.list_presets()
+        except Exception:
+            return []
+
+    def load_preset(self, key: str) -> Dict[str, Any]:
+        """プリセットを読み込んでパラメータとMIDI compositionをセットする"""
+        try:
+            data = self.preset_manager.load_preset(key)
+            if not data:
+                return {"status": "error", "message": "プリセットが見つかりませんでした。"}
+                
+            # メモリ内の last_composition を上書きして、Phase 1をスキップできるようにする
+            comp_data = data.get("composition")
+            tracks_info = []
+            if comp_data:
+                self.last_composition = MidiComposition(**comp_data)
+                # プレビュー音声を即座に生成
+                midi_bytes = json_to_midi(self.last_composition)
+                self.lite_renderer.render(midi_bytes, self.preview_wav_path)
+                
+                for track in self.last_composition.tracks:
+                    tracks_info.append({
+                        "track_id": track.track_id,
+                        "track_name": track.track_name,
+                        "instrument": track.instrument,
+                        "notes_count": len(track.notes)
+                    })
+                
+            return {
+                "status": "success",
+                "name": data.get("name"),
+                "params": data.get("params"),
+                "tracks": tracks_info,
+                "audio_url": "temp_preview.wav"
+            }
+        except Exception as e:
+            return {"status": "error", "message": str(e)}
+
+    def delete_preset(self, key: str) -> Dict[str, Any]:
+        """プリセットを削除する"""
+        try:
+            success = self.preset_manager.delete_preset(key)
+            if success:
+                return {"status": "success"}
+            return {"status": "error", "message": "プリセットの削除に失敗しました。"}
         except Exception as e:
             return {"status": "error", "message": str(e)}

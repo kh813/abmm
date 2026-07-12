@@ -88,14 +88,14 @@
 - [x] 7.8 エラーがあれば修正し、git commit を実行する
 
 ### Phase 8: プリセット管理とUI/UXの最終磨き上げ (Phase E - 仕上げその2)
-- [ ] 8.1 プリセット保存/読込ロジックの実装（MIDIファイルとメタ情報JSONの関連付け保存） ([preset_manager.py](file:///Users/hiroshi/dev/abmm/app/presets/preset_manager.py))
-- [ ] 8.2 フロントエンドUIにプリセット保存・読込用コントロールおよび一覧表示機能の追加
-- [ ] 8.3 プリセット読み込み時にPhase 1をスキップして直接Phase 2を呼び出すパスの実装
-- [ ] 8.4 フロントエンドUIのレスポンシブデザインおよび美的デザイン（CSS/JS）のブラッシュアップ（Antigravity Webアプリ開発の設計美学に従う）
-- [ ] 8.5 アプリケーション全体のエラーハンドリング、詳細ログ出力、トースト通知表示の追加
-- [ ] 8.6 プリセットの保存/読込およびUI連動のテストコード・検証シナリオを作成 (`tests/test_presets_and_ui.py`)
-- [ ] 8.7 ビルドの実行およびテストを実行し、エラーがないことを確認する
-- [ ] 8.8 エラーがあれば修正し、git commit を実行する
+- [x] 8.1 プリセット保存/読込ロジックの実装（MIDIファイルとメタ情報JSONの関連付け保存） ([preset_manager.py](file:///Users/hiroshi/dev/abmm/app/presets/preset_manager.py))
+- [x] 8.2 フロントエンドUIにプリセット保存・読込用コントロールおよび一覧表示機能の追加
+- [x] 8.3 プリセット読み込み時にPhase 1をスキップして直接Phase 2を呼び出すパスの実装
+- [x] 8.4 フロントエンドUIのレスポンシブデザインおよび美的デザイン（CSS/JS）のブラッシュアップ（Antigravity Webアプリ開発の設計美学に従う）
+- [x] 8.5 アプリケーション全体のエラーハンドリング、詳細ログ出力、トースト通知表示の追加
+- [x] 8.6 プリセットの保存/読込およびUI連動のテストコード・検証シナリオを作成 (`tests/test_presets_and_ui.py`)
+- [x] 8.7 ビルドの実行およびテストを実行し、エラーがないことを確認する
+- [x] 8.8 エラーがあれば修正し、git commit を実行する
 
 ### Phase 9: パッケージングと配布パイプライン (Phase E - 仕上げその3)
 - [ ] 9.1 `pyinstaller` 用のビルド設定ファイル ([abmm.spec](file:///Users/hiroshi/dev/abmm/abmm.spec)) の作成（arm64ターゲット、frontend同梱、Info.plist設定等）

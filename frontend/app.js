@@ -230,6 +230,213 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
+  // Preset DOM elements
+  const presetNameInput = document.getElementById("preset-name-input");
+  const savePresetBtn = document.getElementById("save-preset-btn");
+  const presetSelect = document.getElementById("preset-select");
+  const loadPresetBtn = document.getElementById("load-preset-btn");
+  const deletePresetBtn = document.getElementById("delete-preset-btn");
+
+  // プリセット一覧を取得し選択肢を初期化する
+  async function loadPresetList() {
+    if (typeof pywebview === "undefined" || !pywebview.api || !pywebview.api.list_presets) {
+      window.addEventListener("pywebviewready", loadPresetList, { once: true });
+      return;
+    }
+
+    try {
+      const list = await pywebview.api.list_presets();
+      // デフォルト以外の選択肢をクリア
+      presetSelect.innerHTML = '<option value="">-- 保存済みを選択 --</option>';
+      
+      list.forEach(preset => {
+        const option = document.createElement("option");
+        option.value = preset.key;
+        option.textContent = preset.name;
+        presetSelect.appendChild(option);
+      });
+    } catch (err) {
+      console.error("Failed to load preset list:", err);
+    }
+  }
+
+  // プリセット保存ボタンの処理
+  savePresetBtn.addEventListener("click", async () => {
+    const name = presetNameInput.value.trim();
+    if (!name) {
+      alert("保存するプリセット名を入力してください。");
+      return;
+    }
+
+    if (typeof pywebview === "undefined" || !pywebview.api || !pywebview.api.save_preset) {
+      alert("APIが利用できません。");
+      return;
+    }
+
+    // パラメータの収集
+    const params = {
+      description: promptInput.value.trim(),
+      tempo: parseInt(tempoSlider.value),
+      key_mode: keyMode,
+      duration: parseFloat(durationSlider.value),
+      brightness: parseFloat(brightnessSlider.value),
+      energy: parseFloat(energySlider.value),
+      density: parseFloat(densitySlider.value),
+      reverb_space: parseFloat(reverbSlider.value),
+      instruments: {
+        piano: parseFloat(instPiano.value),
+        guitar: parseFloat(instGuitar.value),
+        drums: parseFloat(instDrums.value),
+        pad: parseFloat(instPad.value),
+        bass: parseFloat(instBass.value)
+      }
+    };
+
+    try {
+      const response = await pywebview.api.save_preset(name, params);
+      if (response.status === "success") {
+        alert(`プリセット '${name}' を保存しました。`);
+        presetNameInput.value = "";
+        loadPresetList();
+      } else {
+        alert(`保存に失敗しました: ${response.message}`);
+      }
+    } catch (err) {
+      alert(`保存エラー: ${err}`);
+    }
+  });
+
+  // プリセット読み込みボタンの処理
+  loadPresetBtn.addEventListener("click", async () => {
+    const key = presetSelect.value;
+    if (!key) {
+      alert("読み込むプリセットを選択してください。");
+      return;
+    }
+
+    if (typeof pywebview === "undefined" || !pywebview.api || !pywebview.api.load_preset) {
+      alert("APIが利用できません。");
+      return;
+    }
+
+    try {
+      const response = await pywebview.api.load_preset(key);
+      if (response.status === "success") {
+        const params = response.params;
+        
+        // パラメータをUIに復元
+        promptInput.value = params.description || "";
+        
+        tempoSlider.value = params.tempo || 80;
+        tempoValue.textContent = params.tempo || 80;
+        
+        durationSlider.value = params.duration || 1.0;
+        durationValue.textContent = parseFloat(params.duration || 1.0).toFixed(1);
+        
+        brightnessSlider.value = params.brightness !== undefined ? params.brightness : 0.5;
+        brightnessValue.textContent = parseFloat(params.brightness !== undefined ? params.brightness : 0.5).toFixed(1);
+        
+        energySlider.value = params.energy !== undefined ? params.energy : 0.5;
+        energyValue.textContent = parseFloat(params.energy !== undefined ? params.energy : 0.5).toFixed(1);
+        
+        densitySlider.value = params.density !== undefined ? params.density : 0.5;
+        densityValue.textContent = parseFloat(params.density !== undefined ? params.density : 0.5).toFixed(1);
+        
+        reverbSlider.value = params.reverb_space !== undefined ? params.reverb_space : 0.5;
+        reverbValue.textContent = parseFloat(params.reverb_space !== undefined ? params.reverb_space : 0.5).toFixed(1);
+        
+        keyMode = params.key_mode || "major";
+        if (keyMode === "major") {
+          keyMajorBtn.classList.add("active");
+          keyMinorBtn.classList.remove("active");
+        } else {
+          keyMinorBtn.classList.add("active");
+          keyMajorBtn.classList.remove("active");
+        }
+        
+        // 楽器バランスの復元
+        if (params.instruments) {
+          const inst = params.instruments;
+          instPiano.value = inst.piano !== undefined ? inst.piano : 0.8;
+          instPianoValue.textContent = parseFloat(instPiano.value).toFixed(1);
+          
+          instGuitar.value = inst.guitar !== undefined ? inst.guitar : 0.0;
+          instGuitarValue.textContent = parseFloat(instGuitar.value).toFixed(1);
+          
+          instDrums.value = inst.drums !== undefined ? inst.drums : 0.5;
+          instDrumsValue.textContent = parseFloat(instDrums.value).toFixed(1);
+          
+          instPad.value = inst.pad !== undefined ? inst.pad : 0.2;
+          instPadValue.textContent = parseFloat(instPad.value).toFixed(1);
+          
+          instBass.value = inst.bass !== undefined ? inst.bass : 0.4;
+          instBassValue.textContent = parseFloat(instBass.value).toFixed(1);
+        }
+
+        // トラックリストの読み込み
+        statusPlaceholder.classList.add("hidden");
+        statusContent.classList.remove("hidden");
+        resTempo.textContent = `${params.tempo || 80} BPM`;
+        resKey.textContent = keyMode === "major" ? "Major (明るい)" : "Minor (切ない)";
+        resDuration.textContent = `${params.duration || 1.0} 分`;
+
+        tracksList.innerHTML = "";
+        response.tracks.forEach(track => {
+          const li = document.createElement("li");
+          const nameBadge = document.createElement("span");
+          nameBadge.className = "track-name-badge";
+          nameBadge.innerHTML = `🎹 ${track.track_name} <span class="track-inst">${track.instrument}</span>`;
+          
+          const notesCount = document.createElement("span");
+          notesCount.className = "track-notes-count";
+          notesCount.textContent = `${track.notes_count} 音`;
+          
+          li.appendChild(nameBadge);
+          li.appendChild(notesCount);
+          tracksList.appendChild(li);
+        });
+
+        // プレビュー音声のロードと再生
+        const cacheBuster = `?t=${Date.now()}`;
+        audioPreview.src = response.audio_url + cacheBuster;
+        audioPreview.load();
+        audioPreview.play().catch(e => console.log("Autoplay prevented:", e));
+
+        alert(`プリセット '${response.name}' をロードし、プレビューを読み込みました。`);
+      } else {
+        alert(`プリセットの読み込みに失敗しました: ${response.message}`);
+      }
+    } catch (err) {
+      alert(`ロードエラー: ${err}`);
+    }
+  });
+
+  // プリセット削除ボタンの処理
+  deletePresetBtn.addEventListener("click", async () => {
+    const key = presetSelect.value;
+    if (!key) {
+      alert("削除するプリセットを選択してください。");
+      return;
+    }
+
+    if (confirm("選択したプリセットを完全に削除してよろしいですか？")) {
+      try {
+        const response = await pywebview.api.delete_preset(key);
+        if (response.status === "success") {
+          alert("プリセットを削除しました。");
+          loadPresetList();
+        } else {
+          alert(`削除に失敗しました: ${response.message}`);
+        }
+      } catch (err) {
+        alert(`削除エラー: ${err}`);
+      }
+    }
+  });
+
+  // 初期ロード呼び出し
+  loadPresetList();
+
   // アプリ起動時にスペック検出を実行
   initHardwareSpecs();
 });

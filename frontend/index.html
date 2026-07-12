@@ -137,8 +137,25 @@
                 <input type="range" id="inst-bass" min="0.0" max="1.0" value="0.4" step="0.1">
               </div>
             </div>
+            
+            <!-- Preset Management -->
+            <div class="preset-management">
+              <h4 class="sub-section-title">プリセット保存 / 読込</h4>
+              <div class="preset-save-row">
+                <input type="text" id="preset-name-input" placeholder="プリセット名を入力...">
+                <button type="button" id="save-preset-btn" class="secondary-btn">保存</button>
+              </div>
+              <div class="preset-load-row">
+                <select id="preset-select">
+                  <option value="">-- 保存済みを選択 --</option>
+                </select>
+                <button type="button" id="load-preset-btn" class="secondary-btn">読込</button>
+                <button type="button" id="delete-preset-btn" class="delete-btn">削除</button>
+              </div>
+            </div>
           </div>
         </div>
+
 
         <!-- Action Button -->
         <button id="compose-btn" class="primary-btn">

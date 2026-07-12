@@ -574,4 +574,70 @@ audio {
   color: var(--text-primary);
 }
 
+/* Preset Management Panel */
+.preset-management {
+  background-color: rgba(0, 0, 0, 0.12);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.preset-save-row, .preset-load-row {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.preset-save-row input[type="text"], .preset-load-row select {
+  flex: 1;
+  background-color: rgba(0, 0, 0, 0.25);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  color: var(--text-primary);
+  padding: 0.4rem 0.6rem;
+  font-size: 0.8rem;
+  outline: none;
+  font-family: var(--font-sans);
+}
+
+.preset-load-row select {
+  cursor: pointer;
+}
+
+.secondary-btn, .delete-btn {
+  font-family: var(--font-sans);
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 0.4rem 0.8rem;
+  border-radius: 6px;
+  cursor: pointer;
+  outline: none;
+  transition: background-color 0.15s, border-color 0.15s;
+}
+
+.secondary-btn {
+  background-color: transparent;
+  border: 1px solid var(--primary-accent);
+  color: var(--primary-accent);
+}
+
+.secondary-btn:hover {
+  background-color: rgba(124, 58, 237, 0.1);
+  border-color: var(--primary-hover);
+  color: var(--primary-hover);
+}
+
+.delete-btn {
+  background-color: transparent;
+  border: 1px solid var(--error-color);
+  color: var(--error-color);
+}
+
+.delete-btn:hover {
+  background-color: rgba(239, 68, 68, 0.1);
+}
+
+
 
