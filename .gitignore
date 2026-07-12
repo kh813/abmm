@@ -1,0 +1,37 @@
+# Virtual environment
+.venv/
+venv/
+ENV/
+
+# Python caches and bytecode
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# macOS system files
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# PyInstaller / Packaging
+build/
+dist/
+*.egg-info/
+
+# Generated MIDI/Audio files
+*.mid
+*.midi
+*.wav
+*.mp3
+*.m4a
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
