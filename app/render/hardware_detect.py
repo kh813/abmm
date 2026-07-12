@@ -87,9 +87,9 @@ def detect_hardware_spec() -> Dict[str, Any]:
     if mem_gb < 15.5:
         recommended_llms = ["llama3.2:3b"]
     elif mem_gb < 31.5:
-        recommended_llms = ["llama3.2:3b", "qwen2.5-coder:7b", "gemma2:9b"]
+        recommended_llms = ["llama3.2:3b", "qwen2.5:7b", "gemma2:9b"]
     elif mem_gb < 63.5:
-        recommended_llms = ["qwen2.5-coder:14b", "gemma2:27b", "mistral:7b"]
+        recommended_llms = ["qwen2.5:14b", "gemma2:27b", "mistral:7b"]
     elif mem_gb < 127.5:
         recommended_llms = ["qwen2.5:32b", "llama3:70b"]
     else:

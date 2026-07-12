@@ -9,9 +9,9 @@ CACHE_DIR = os.path.expanduser("~/Library/Caches/ABMM/models")
 DEFAULT_CONFIG = {
     "ollama_models": [
         {"name": "llama3.2:3b", "label": "llama3.2:3b (軽量・高速)", "estimated_size_mb": 2000.0, "min_ram_gb": 0.0},
-        {"name": "qwen2.5-coder:7b", "label": "qwen2.5-coder:7b (コーディング/作曲支援・標準)", "estimated_size_mb": 4700.0, "min_ram_gb": 16.0},
+        {"name": "qwen2.5:7b", "label": "qwen2.5:7b (標準・中量級)", "estimated_size_mb": 4700.0, "min_ram_gb": 16.0},
         {"name": "gemma2:9b", "label": "gemma2:9b (高精度)", "estimated_size_mb": 5500.0, "min_ram_gb": 16.0},
-        {"name": "qwen2.5-coder:14b", "label": "qwen2.5-coder:14b (高精度・中重量級)", "estimated_size_mb": 9000.0, "min_ram_gb": 32.0},
+        {"name": "qwen2.5:14b", "label": "qwen2.5:14b (高精度・中重量級)", "estimated_size_mb": 9000.0, "min_ram_gb": 32.0},
         {"name": "gemma2:27b", "label": "gemma2:27b (超高精度・重量級)", "estimated_size_mb": 16000.0, "min_ram_gb": 32.0},
         {"name": "qwen2.5:32b", "label": "qwen2.5:32b (プロフェッショナル・超重量級)", "estimated_size_mb": 19000.0, "min_ram_gb": 64.0},
         {"name": "llama3:70b", "label": "llama3:70b (最高品質・フラッグシップ)", "estimated_size_mb": 40000.0, "min_ram_gb": 64.0},
