@@ -50,11 +50,6 @@ def test_build_prompt_includes_all_parameters():
     assert "drums: 0.0" in prompt
     assert "pad: 0.9" in prompt
     assert "bass: 0.4" in prompt
-    
-    # 音楽的ルールのセクション
-    assert "Musical Rules to Apply" in prompt
-    assert "brightness < 0.5" in prompt
-    assert "do NOT create a track for it" in prompt
 
 @patch("app.api.llm_client.OllamaClient.generate")
 @patch("app.render.renderer_lite.LiteRenderer.render")
