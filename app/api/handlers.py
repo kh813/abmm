@@ -143,6 +143,9 @@ class WebviewApi:
             # モデル構成
             model_tier = params.get("model_tier", "Standard")
             preview_only = params.get("preview_only", False)
+            ollama_model = params.get("ollama_model")
+            if ollama_model:
+                self.llm_client.model = ollama_model
             
             self._notify_status("MIDI作曲中...")
             self._notify_progress(0.0)
@@ -326,3 +329,30 @@ class WebviewApi:
             return {"status": "error", "message": "プリセットの削除に失敗しました。"}
         except Exception as e:
             return {"status": "error", "message": str(e)}
+
+    def check_ollama_status(self):
+        """Ollamaの接続状況とモデル一覧を取得する"""
+        return self.llm_client.check_status()
+
+    def start_ollama_model_download(self, model_name):
+        """非同期でOllamaのモデルダウンロードを開始する"""
+        threading.Thread(
+            target=self._async_ollama_download_worker,
+            args=(model_name,),
+            daemon=True
+        )
+        return {"status": "success"}
+
+    def _async_ollama_download_worker(self, model_name):
+        def prog_cb(percent, status):
+            if self.window:
+                self.window.evaluate_js(f"onOllamaDownloadProgress({json.dumps(model_name)}, {percent}, {json.dumps(status)})")
+        
+        success = self.llm_client.pull_model(model_name, progress_callback=prog_cb)
+        if self.window:
+            self.window.evaluate_js(f"onOllamaDownloadComplete({json.dumps(model_name)}, {json.dumps(success)})")
+
+    def set_ollama_model(self, model_name):
+        """Ollamaクライアントのアクティブモデルを設定する"""
+        self.llm_client.model = model_name
+        return {"status": "success", "model": model_name}

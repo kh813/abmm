@@ -1,6 +1,24 @@
 document.addEventListener("DOMContentLoaded", () => {
   // UI要素の取得
   const promptInput = document.getElementById("prompt-input");
+  
+  // Ollama status elements
+  const ollamaIndicator = document.getElementById("ollama-indicator");
+  const ollamaStatusText = document.getElementById("ollama-status-text");
+  const modelSelectionRow = document.getElementById("model-selection-row");
+  const ollamaModelSelect = document.getElementById("ollama-model-select");
+  const modelDownloadBar = document.getElementById("model-download-bar");
+  const modelDownloadFill = document.getElementById("model-download-fill");
+  const modelDownloadStatus = document.getElementById("model-download-status");
+  const modelDownloadBtn = document.getElementById("model-download-btn");
+
+  // Progress card elements
+  const progressCard = document.getElementById("progress-card");
+  const progressStatusText = document.getElementById("progress-status-text");
+  const progressPercent = document.getElementById("progress-percent");
+  const progressBarFill = document.getElementById("progress-bar-fill");
+  const cancelRenderBtn = document.getElementById("cancel-render-btn");
+
   const tempoSlider = document.getElementById("tempo-slider");
   const tempoValue = document.getElementById("tempo-value");
   const durationSlider = document.getElementById("duration-slider");
@@ -137,66 +155,112 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     try {
-      // Python側の API を呼び出す（拡張パラメータをすべて引き渡す）
-      const response = await pywebview.api.compose_and_preview(
-        description,
-        tempo,
-        keyMode,
-        duration,
-        brightness,
-        energy,
-        density,
-        reverbSpace,
-        instruments
-      );
-      
-      if (response.status === "success") {
-        // プレースホルダーを隠し、生成結果を表示
-        statusPlaceholder.classList.add("hidden");
-        statusContent.classList.remove("hidden");
-        
-        // メタデータの更新
-        resTempo.textContent = `${response.tempo_bpm} BPM`;
-        resKey.textContent = response.key_mode === "major" ? "Major (明るい)" : "Minor (切ない)";
-        resDuration.textContent = `${response.duration_minutes} 分`;
-        
-        // トラックリストのクリアと再構築
-        tracksList.innerHTML = "";
-        response.tracks.forEach(track => {
-          const li = document.createElement("li");
-          
-          const nameBadge = document.createElement("span");
-          nameBadge.className = "track-name-badge";
-          nameBadge.innerHTML = `🎹 ${track.track_name} <span class="track-inst">${track.instrument}</span>`;
-          
-          const notesCount = document.createElement("span");
-          notesCount.className = "track-notes-count";
-          notesCount.textContent = `${track.notes_count} 音`;
-          
-          li.appendChild(nameBadge);
-          li.appendChild(notesCount);
-          tracksList.appendChild(li);
-        });
+      // プレースホルダーのリセットと進行状況カードの表示
+      statusPlaceholder.classList.remove("hidden");
+      statusContent.classList.add("hidden");
+      progressCard.classList.remove("hidden");
+      progressBarFill.style.width = "0%";
+      progressPercent.textContent = "0%";
+      progressStatusText.textContent = "MIDI生成要求の準備中...";
 
-        // プレビューオーディオのロードと再生
-        // キャッシュによる古い音声の再生を防ぐため、ランダムタイムスタンプを付加 (cache busting)
-        const cacheBuster = `?t=${Date.now()}`;
-        audioPreview.src = response.audio_url + cacheBuster;
-        audioPreview.load();
-        
-        // 音声を再生（ブラウザポリシーに引っかかった場合はエラー出力を無視）
-        audioPreview.play().catch(e => console.log("Autoplay was prevented:", e));
-      } else {
-        alert(`プレビューの生成中にエラーが発生しました:\n${response.message}`);
+      const params = {
+        description: description,
+        tempo: tempo,
+        key_mode: keyMode,
+        duration: duration,
+        brightness: brightness,
+        energy: energy,
+        density: density,
+        reverb_space: reverbSpace,
+        instruments: instruments,
+        ollama_model: ollamaModelSelect.value,
+        model_tier: "Lite",
+        preview_only: false
+      };
+
+      // 非同期レンダリングをキック
+      const response = await pywebview.api.start_render_async(params);
+      if (response.status !== "success") {
+        alert(`レンダリングの開始に失敗しました: ${response.message}`);
+        progressCard.classList.add("hidden");
+        composeBtn.disabled = false;
+        btnSpinner.classList.add("hidden");
       }
     } catch (err) {
       alert(`API接続エラーが発生しました:\n${err}`);
-    } finally {
-      // ローディング状態の解除
+      progressCard.classList.add("hidden");
       composeBtn.disabled = false;
       btnSpinner.classList.add("hidden");
     }
   });
+
+  // キャンセルボタンのリスナー
+  cancelRenderBtn.addEventListener("click", async () => {
+    if (typeof pywebview !== "undefined" && pywebview.api && pywebview.api.cancel_render) {
+      try {
+        await pywebview.api.cancel_render();
+        progressStatusText.textContent = "キャンセル要求送信中...";
+      } catch (err) {
+        console.error("Cancel failed:", err);
+      }
+    }
+  });
+
+  // 非同期レンダリングの進行状況コールバック
+  window.updateRenderProgress = (val) => {
+    const percent = Math.round(val * 100);
+    progressBarFill.style.width = percent + "%";
+    progressPercent.textContent = percent + "%";
+  };
+
+  window.updateRenderStatus = (msg) => {
+    progressStatusText.textContent = msg;
+  };
+
+  window.onRenderComplete = (response) => {
+    progressCard.classList.add("hidden");
+    composeBtn.disabled = false;
+    btnSpinner.classList.add("hidden");
+
+    if (response.status === "success") {
+      statusPlaceholder.classList.add("hidden");
+      statusContent.classList.remove("hidden");
+      
+      resTempo.textContent = `${response.tempo_bpm} BPM`;
+      resKey.textContent = response.key_mode === "major" ? "Major (明るい)" : "Minor (切ない)";
+      resDuration.textContent = `${response.duration_minutes} 分`;
+      
+      tracksList.innerHTML = "";
+      response.tracks.forEach(track => {
+        const li = document.createElement("li");
+        const nameBadge = document.createElement("span");
+        nameBadge.className = "track-name-badge";
+        nameBadge.innerHTML = `🎹 ${track.track_name} <span class="track-inst">${track.instrument}</span>`;
+        
+        const notesCount = document.createElement("span");
+        notesCount.className = "track-notes-count";
+        notesCount.textContent = `${track.notes_count} 音`;
+        
+        li.appendChild(nameBadge);
+        li.appendChild(notesCount);
+        tracksList.appendChild(li);
+      });
+
+      const cacheBuster = `?t=${Date.now()}`;
+      audioPreview.src = response.audio_url + cacheBuster;
+      audioPreview.load();
+      audioPreview.play().catch(e => console.log("Autoplay prevented:", e));
+    } else {
+      alert(`生成失敗: ${response.message}`);
+    }
+  };
+
+  window.onRenderError = (err) => {
+    progressCard.classList.add("hidden");
+    composeBtn.disabled = false;
+    btnSpinner.classList.add("hidden");
+    alert(`エラーが発生しました:\n${err}`);
+  };
 
   // PCのスペック情報を取得・UIに反映する関数
   async function initHardwareSpecs() {
@@ -433,6 +497,122 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     }
   });
+
+  // Ollama モデルおよび接続管理
+  let ollamaConnected = false;
+  let ollamaInstalledModels = [];
+
+  async function checkOllamaStatus() {
+    if (typeof pywebview === "undefined" || !pywebview.api || !pywebview.api.check_ollama_status) {
+      window.addEventListener("pywebviewready", checkOllamaStatus, { once: true });
+      return;
+    }
+
+    try {
+      const status = await pywebview.api.check_ollama_status();
+      const selectedModel = ollamaModelSelect.value;
+
+      if (!status.running) {
+        ollamaConnected = false;
+        ollamaIndicator.textContent = "🔴";
+        ollamaStatusText.textContent = "Ollamaが起動していません。";
+        modelSelectionRow.classList.add("hidden");
+        modelDownloadBar.classList.add("hidden");
+        modelDownloadBtn.classList.add("hidden");
+        
+        composeBtn.disabled = true;
+        composeBtn.classList.add("btn-disabled");
+        composeBtn.querySelector(".btn-text").textContent = "❌ Ollama未起動のため作曲不可";
+      } else {
+        ollamaConnected = true;
+        ollamaIndicator.textContent = "🟢";
+        ollamaInstalledModels = status.models;
+        modelSelectionRow.classList.remove("hidden");
+
+        const isInstalled = ollamaInstalledModels.includes(selectedModel) || 
+                            ollamaInstalledModels.includes(selectedModel + ":latest") ||
+                            ollamaInstalledModels.some(m => m.startsWith(selectedModel));
+
+        if (isInstalled) {
+          ollamaStatusText.textContent = "Ollama 接続完了 / モデル準備OK";
+          modelDownloadBar.classList.add("hidden");
+          modelDownloadBtn.classList.add("hidden");
+          
+          composeBtn.disabled = false;
+          composeBtn.classList.remove("btn-disabled");
+          composeBtn.querySelector(".btn-text").textContent = "🎵 作曲してプレビューを生成 (Phase 1)";
+        } else {
+          ollamaStatusText.textContent = `モデル '${selectedModel}' が未インストールです。`;
+          modelDownloadBtn.classList.remove("hidden");
+          modelDownloadBar.classList.add("hidden");
+          
+          composeBtn.disabled = true;
+          composeBtn.classList.add("btn-disabled");
+          composeBtn.querySelector(".btn-text").textContent = "❌ モデル未ダウンロードのため作曲不可";
+        }
+      }
+    } catch (err) {
+      console.error("Failed to check Ollama status:", err);
+    }
+  }
+
+  // モデルの選択変更イベント
+  ollamaModelSelect.addEventListener("change", async () => {
+    const val = ollamaModelSelect.value;
+    if (typeof pywebview !== "undefined" && pywebview.api && pywebview.api.set_ollama_model) {
+      await pywebview.api.set_ollama_model(val);
+    }
+    checkOllamaStatus();
+  });
+
+  // Ollama モデルダウンロードボタンの処理
+  modelDownloadBtn.addEventListener("click", async () => {
+    const selectedModel = ollamaModelSelect.value;
+    if (typeof pywebview === "undefined" || !pywebview.api || !pywebview.api.start_ollama_model_download) {
+      alert("APIが利用できません。");
+      return;
+    }
+
+    try {
+      modelDownloadBtn.classList.add("hidden");
+      modelDownloadBar.classList.remove("hidden");
+      ollamaModelSelect.disabled = true;
+      modelDownloadFill.style.width = "0%";
+      modelDownloadStatus.textContent = "ダウンロード開始中...";
+      
+      await pywebview.api.start_ollama_model_download(selectedModel);
+    } catch (err) {
+      alert(`ダウンロード開始エラー: ${err}`);
+      modelDownloadBtn.classList.remove("hidden");
+      modelDownloadBar.classList.add("hidden");
+      ollamaModelSelect.disabled = false;
+    }
+  });
+
+  // Ollamaモデルダウンロードのコールバック
+  window.onOllamaDownloadProgress = (modelName, percent, status) => {
+    const roundedPercent = Math.round(percent * 100);
+    modelDownloadFill.style.width = roundedPercent + "%";
+    modelDownloadStatus.textContent = `${status} (${roundedPercent}%)`;
+  };
+
+  window.onOllamaDownloadComplete = (modelName, success) => {
+    ollamaModelSelect.disabled = false;
+    modelDownloadBar.classList.add("hidden");
+    
+    if (success) {
+      alert(`モデル '${modelName}' のダウンロードが完了しました！`);
+    } else {
+      alert(`モデル '${modelName}' のダウンロードに失敗しました。Ollamaのログを確認してください。`);
+    }
+    checkOllamaStatus();
+  };
+
+  // 定期的なOllamaステータス確認 (10秒ごと)
+  setInterval(checkOllamaStatus, 10000);
+  
+  // 起動時のチェック
+  checkOllamaStatus();
 
   // 初期ロード呼び出し
   loadPresetList();

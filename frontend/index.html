@@ -33,6 +33,32 @@
             <textarea id="prompt-input" placeholder="例: 雨上がりの午後、少し切ないローファイジャズ。イントロは静かなピアノ、途中からアコギが入って展開する穏やかな雰囲気。"></textarea>
           </div>
 
+          <!-- Ollama LLM Connection Status -->
+          <div class="ollama-status-card" id="ollama-status-card">
+            <div class="status-header">
+              <span class="status-indicator" id="ollama-indicator">🔴</span>
+              <span id="ollama-status-text">Ollama接続チェック中...</span>
+            </div>
+            
+            <div class="model-selection-row hidden" id="model-selection-row">
+              <label for="ollama-model-select">モデル選択:</label>
+              <select id="ollama-model-select">
+                <option value="llama3.2:3b">llama3.2:3b (推奨・軽量)</option>
+                <option value="gemma2:9b">gemma2:9b (高精度)</option>
+                <option value="qwen2.5-coder:7b">qwen2.5-coder:7b (コード・推論向け)</option>
+              </select>
+            </div>
+            
+            <div class="model-download-bar hidden" id="model-download-bar">
+              <div class="download-progress-container">
+                <div class="download-progress-fill" id="model-download-fill"></div>
+              </div>
+              <span id="model-download-status">ダウンロード準備中...</span>
+            </div>
+            
+            <button type="button" id="model-download-btn" class="secondary-btn hidden">モデルをダウンロード</button>
+          </div>
+
           <!-- Slider Parameters -->
           <div class="sliders-section">
             <div class="slider-group">
@@ -173,6 +199,19 @@
           <span class="info-icon">💻</span>
           <span id="spec-text">スペック検出中...</span>
         </div>
+
+        <!-- Active Progress Card -->
+        <div class="progress-card hidden" id="progress-card">
+          <div class="progress-header">
+            <span id="progress-status-text">MIDI作曲中...</span>
+            <span id="progress-percent">0%</span>
+          </div>
+          <div class="progress-bar-container">
+            <div class="progress-bar-fill" id="progress-bar-fill"></div>
+          </div>
+          <button type="button" id="cancel-render-btn" class="delete-btn">生成をキャンセル</button>
+        </div>
+
 
 
         <!-- Status Card -->
