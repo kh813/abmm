@@ -74,7 +74,8 @@ def test_async_export_worker(mock_json_to_midi, mock_process_export):
         input_wav_path=api.temp_export_wav_path,
         output_path="/path/to/file.wav",
         target_duration_seconds=300.0,
-        export_format="wav"
+        export_format="wav",
+        params=ANY
     )
     
     # Verify evaluate_js was called to notify front-end of completion

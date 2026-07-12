@@ -123,3 +123,31 @@ def test_process_and_export_bgm_mp3_fallback(temp_audio_paths):
         fallback_path = base + ".wav"
         assert os.path.exists(fallback_path)
         assert not os.path.exists(output_mp3) # 元の .mp3 はできていないこと
+
+def test_process_and_export_bgm_seamless(temp_audio_paths):
+    input_wav, output_wav, _ = temp_audio_paths
+    
+    sr = 16000
+    t = np.linspace(0.0, 1.0, sr, endpoint=False)
+    sig = np.column_stack((0.5 * np.cos(2 * np.pi * 440 * t), 0.5 * np.cos(2 * np.pi * 440 * t)))
+    sf.write(input_wav, sig, sr, format="WAV")
+    
+    # Run with 0 fades (seamless)
+    res = process_and_export_bgm(
+        input_wav_path=input_wav,
+        output_path=output_wav,
+        target_duration_seconds=3.0,
+        export_format="wav",
+        params={
+            "fade_in_seconds": 0.0,
+            "fade_out_seconds": 0.0
+        }
+    )
+    
+    assert res["status"] == "success"
+    data, samplerate = sf.read(output_wav)
+    
+    # Assert start and end are NOT zero!
+    assert data[0, 0] != 0.0
+    assert data[-1, 0] != 0.0
+

@@ -671,11 +671,15 @@ document.addEventListener("DOMContentLoaded", () => {
       progressPercent.textContent = "0%";
       progressCard.classList.remove("hidden");
       
+      const exportSeamlessLoop = document.getElementById("export-seamless-loop");
+      const seamlessLoopVal = exportSeamlessLoop ? exportSeamlessLoop.checked : false;
+
       const params = {
         export_path: exportPath,
         export_duration: durationVal,
         export_format: format,
-        model_tier: tier
+        model_tier: tier,
+        seamless_loop: seamlessLoopVal
       };
       
       const response = await pywebview.api.start_export_async(params);

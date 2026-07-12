@@ -428,11 +428,17 @@ class WebviewApi:
 
             target_duration_seconds = export_duration_minutes * 60.0
             
+            export_params = {}
+            if params.get("seamless_loop", False):
+                export_params["fade_in_seconds"] = 0.0
+                export_params["fade_out_seconds"] = 0.0
+            
             process_and_export_bgm(
                 input_wav_path=self.temp_export_wav_path,
                 output_path=export_path,
                 target_duration_seconds=target_duration_seconds,
-                export_format=export_format
+                export_format=export_format,
+                params=export_params
             )
             
             self._notify_progress(1.0)
