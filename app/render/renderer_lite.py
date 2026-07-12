@@ -61,6 +61,7 @@ class LiteRenderer(BaseRenderer):
                 "fluidsynth",
                 "-F", output_path,
                 "-T", "wav",
+                "-g", "1.5",
                 "-ni",
                 self.soundfont_path,
                 temp_midi_name,
