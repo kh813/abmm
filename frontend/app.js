@@ -1,6 +1,8 @@
 document.addEventListener("DOMContentLoaded", () => {
   // UI要素の取得
   const promptInput = document.getElementById("prompt-input");
+  const genreSelect = document.getElementById("genre-select");
+  const progressionSelect = document.getElementById("progression-select");
   
   // Ollama status elements
   const ollamaIndicator = document.getElementById("ollama-indicator");
@@ -171,8 +173,7 @@ document.addEventListener("DOMContentLoaded", () => {
       progressPercent.textContent = "0%";
       progressStatusText.textContent = "MIDI生成要求の準備中...";
 
-      const genreSelect = document.getElementById("genre-select");
-      const progressionSelect = document.getElementById("progression-select");
+
 
       const params = {
         description: description,

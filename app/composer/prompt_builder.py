@@ -403,6 +403,18 @@ def get_song_structure(total_bars_needed: int, key_mode: str, style: str, custom
     style_mapped = style.lower() if style.lower() in ("pop", "jazz", "rock", "ambient", "edm", "trance", "chillhop", "triphop") else "pop"
     if style.lower() == "lofi":
         style_mapped = "jazz"
+    elif style.lower() in ("synthwave", "house", "techno"):
+        style_mapped = "edm"
+    elif style.lower() == "folk":
+        style_mapped = "ambient"
+    elif style.lower() == "metal":
+        style_mapped = "rock"
+    elif style.lower() in ("funk", "rnb"):
+        style_mapped = "jazz"
+    elif style.lower() == "classical":
+        style_mapped = "ambient"
+    elif style.lower() == "reggae":
+        style_mapped = "pop"
         
     if custom_chords_tuple:
         verse_chords, chorus_chords = custom_chords_tuple
@@ -563,13 +575,31 @@ def expand_chord_plan_to_midi(plan: Dict[str, Any], duration_minutes: float) -> 
         if style == "lofi":
             style = "jazz"
             
-    # トランス/チルホップ/トリップホップのテンポを強制設定
+    # トランス/チルホップ/トリップホップおよび新ジャンルのテンポを設定
     if style in ("trance", "dream_house"):
         tempo_bpm = 138
     elif style == "chillhop":
         tempo_bpm = 85
     elif style == "triphop":
         tempo_bpm = 74
+    elif style == "synthwave":
+        tempo_bpm = 115
+    elif style == "folk":
+        tempo_bpm = 88
+    elif style == "metal":
+        tempo_bpm = 130
+    elif style == "funk":
+        tempo_bpm = 105
+    elif style == "reggae":
+        tempo_bpm = 76
+    elif style == "techno":
+        tempo_bpm = 126
+    elif style == "house":
+        tempo_bpm = 122
+    elif style == "classical":
+        tempo_bpm = 72
+    elif style == "rnb":
+        tempo_bpm = 84
             
     instruments = plan.get("instruments", ["piano", "guitar", "bass", "drums"])
     
@@ -871,8 +901,8 @@ def expand_chord_plan_to_midi(plan: Dict[str, Any], duration_minutes: float) -> 
     # トラックオブジェクトの構築
     tracks = []
     if "piano" in instruments and track_notes["piano"]:
-        inst_name = "synth_lead" if style == "edm" else "acoustic_piano"
-        track_name = "Synth Lead" if style == "edm" else "Acoustic Piano"
+        inst_name = "synth_lead" if style in ("edm", "trance", "synthwave", "techno", "house") else "acoustic_piano"
+        track_name = "Synth Lead" if style in ("edm", "trance", "synthwave", "techno", "house") else "Acoustic Piano"
         tracks.append(MidiTrack(
             track_id="track_piano",
             track_name=track_name,
@@ -882,8 +912,8 @@ def expand_chord_plan_to_midi(plan: Dict[str, Any], duration_minutes: float) -> 
         ))
         
     if "guitar" in instruments and track_notes["guitar"]:
-        inst_name = "synth_pad" if style in ("edm", "trance", "triphop") else "acoustic_guitar"
-        track_name = "Synth Pad" if style in ("edm", "trance", "triphop") else "Acoustic Guitar"
+        inst_name = "synth_pad" if style in ("edm", "trance", "synthwave", "techno", "house", "triphop", "ambient", "classical") else "acoustic_guitar"
+        track_name = "Synth Pad" if style in ("edm", "trance", "synthwave", "techno", "house", "triphop", "ambient", "classical") else "Acoustic Guitar"
         tracks.append(MidiTrack(
             track_id="track_guitar",
             track_name=track_name,
@@ -893,8 +923,8 @@ def expand_chord_plan_to_midi(plan: Dict[str, Any], duration_minutes: float) -> 
         ))
         
     if "bass" in instruments and track_notes["bass"]:
-        inst_name = "synth_bass" if style in ("edm", "trance", "triphop") else "electric_bass"
-        track_name = "Synth Bass" if style in ("edm", "trance", "triphop") else "Electric Bass"
+        inst_name = "synth_bass" if style in ("edm", "trance", "synthwave", "techno", "house", "triphop") else "electric_bass"
+        track_name = "Synth Bass" if style in ("edm", "trance", "synthwave", "techno", "house", "triphop") else "Electric Bass"
         tracks.append(MidiTrack(
             track_id="track_bass",
             track_name=track_name,
