@@ -116,31 +116,118 @@ def get_song_structure(total_bars_needed: int, key_mode: str, style: str) -> Lis
     """音楽理論的セオリーに基づき、イントロ、サビ、Aメロ、Bメロ、アウトロの曲構成とコード進行を構築する"""
     
     # 決定論的なマンネリを防ぐため、毎回異なるコード進行プールから選択
-    # メジャーキー進行
+    # 決定論的なマンネリを防ぐため、多数の音楽理論的・歴史的コード進行パターンからランダムに選択
+    # メジャーキー進行（Aメロ）
     major_verse_pools = {
-        "pop": ["C", "G", "Am", "Em"],
-        "jazz": ["Dm7", "G7", "Cmaj7", "A7"],
-        "rock": ["C", "F", "G", "C"],
-        "ambient": ["Cmaj7", "Fmaj7", "Cmaj7", "Fmaj7"]
+        "pop": [
+            ["C", "G", "Am", "Em"],          # カノン進行前半風
+            ["C", "Am", "F", "G"],           # 50年代進行 (Stand By Me)
+            ["Am", "F", "C", "G"],           # 朝陽進行 (Sensitive Pop)
+            ["C", "G/B", "Am", "G"],         # ベースライン順次下降進行
+            ["C", "F", "C", "G"]             # I-IV-I-V シンプルフォーク
+        ],
+        "jazz": [
+            ["Dm7", "G7", "Cmaj7", "A7"],     # 1-6-2-5の循環進行
+            ["Cmaj7", "Am7", "Dm7", "G7"],    # Rhythm Changes
+            ["Dm7", "G7", "Em7", "Am7"],      # 2-5-3-6 進行
+            ["Fmaj7", "Bb7", "Cmaj7", "A7"],  # バックドア・ドミナント
+            ["Cmaj7", "Ebdim7", "Dm7", "G7"]  # パッシングディミニッシュ
+        ],
+        "rock": [
+            ["C", "F", "G", "C"],             # I-IV-V-I 基本ロック
+            ["C", "Bb", "F", "C"],            # ミクソリディアンロック (Hey Jude風)
+            ["C", "G", "F", "F"],             # I-V-IV-IV スタジアムロック
+            ["Am", "G", "F", "G"],            # 80年代バラード進行
+            ["C5", "G5", "A5", "F5"]          # パワーコード進行
+        ],
+        "ambient": [
+            ["Cmaj7", "Fmaj7", "Cmaj7", "Fmaj7"], # 1-4フローティング
+            ["Cmaj7", "G6", "Am7", "Fmaj7"],     # モーダル展開
+            ["Fmaj7", "G6", "Em7", "Am7"],       # ドリーミー展開
+            ["Cmaj7", "D7", "Fmaj7", "Cmaj7"]    # リディアン風味
+        ]
     }
+    
+    # メジャーキー進行（サビ）
     major_chorus_pools = {
-        "pop": ["Fmaj7", "G7", "Em7", "Am7"], # 王道進行
-        "jazz": ["Cmaj7", "A7", "Dm7", "G7"],
-        "rock": ["Am", "F", "C", "G"],
-        "ambient": ["Am7", "Fmaj7", "Cmaj7", "G6"]
+        "pop": [
+            ["Fmaj7", "G7", "Em7", "Am7"],    # 王道進行 (IV-V-III-VI)
+            ["C", "G", "Am", "F"],            # 洋楽ポップ王道 (I-V-VI-IV)
+            ["F", "G", "C", "C"],             # 順次上昇解決進行
+            ["C", "Am", "Em", "F"],           # 叙情ポップサビ
+            ["Dm7", "G7", "C", "Am"]          # 2-5-1-6 解決型
+        ],
+        "jazz": [
+            ["Fmaj7", "Fm6", "Em7", "A7"],    # サブドミナントマイナー解決
+            ["Cmaj7", "A7", "Dm7", "G7"],     # 1-6-2-5 ターンアラウンド
+            ["Dm7", "G7", "Em7b5", "A7"],     # セカンダリードミナント経由
+            ["Fmaj7", "G7", "Cmaj7", "C7"]     # ブルース解決
+        ],
+        "rock": [
+            ["F", "G", "Am", "C"],            # IV-V-VI-I 高揚進行
+            ["Am", "F", "C", "G"],            # 高エネルギーロックサビ (VI-IV-I-V)
+            ["C", "G", "D", "D"],             # ダブルプラガルロック
+            ["D", "C", "G", "D"]              # クラシック・ロックアンセム風
+        ],
+        "ambient": [
+            ["Am7", "Fmaj7", "Cmaj7", "G6"],  # 幻想的終止
+            ["Cmaj7", "Em7", "Fmaj7", "G"],   # ゆっくりとした上昇
+            ["Dm7", "Fmaj7", "G6", "Am7"]     # 催眠的リピート
+        ]
     }
-    # マイナーキー進行
+    
+    # マイナーキー進行（Aメロ）
     minor_verse_pools = {
-        "pop": ["Am", "Em", "F", "C"],
-        "jazz": ["Dm7", "G7", "Am7", "E7"],
-        "rock": ["Am", "G", "F", "E7"], # アンダルシア進行
-        "ambient": ["Am7", "Dm7", "Fmaj7", "Em7"]
+        "pop": [
+            ["Am", "F", "C", "G"],            # 小室進行 / マイナーポップ定番
+            ["Am", "Em", "F", "C"],           # 暗から明へのグラデーション
+            ["Am", "Dm", "G", "C"],           # 五度圏マイナー進行
+            ["Am", "G", "F", "E7"],           # アンダルシア進行
+            ["Am", "Am", "Dm", "E7"]          # 民族調マイナー
+        ],
+        "jazz": [
+            ["Dm7b5", "G7", "Cm7", "Abmaj7"], # 2-5-1-6 マイナー
+            ["Am7", "D7", "Bm7b5", "E7"],     # ドリアン・ジャズ進行
+            ["Am7", "Fmaj7", "Bm7b5", "E7"],  # 1-6-2-5 マイナー
+            ["Dm7", "G7", "Cmaj7", "Fmaj7"]   # スムースサークル進行
+        ],
+        "rock": [
+            ["Am", "G", "F", "E7"],           # アンダルシアロック進行
+            ["Am", "F", "G", "Am"],           # パワーマイナーロック
+            ["Am", "C", "D", "F"],            # ドリアンロック (Pink Floyd風)
+            ["Am", "G", "Am", "G"]            # クラシックマイナージャム
+        ],
+        "ambient": [
+            ["Am7", "Dm7", "Fmaj7", "Em7"],   # ダークメディテーション
+            ["Am7", "Em7", "Fmaj7", "G6"],    # フローティングマイナー
+            ["Am7", "Bm7b5", "Cmaj7", "Em7"]  # ドリアンアンビエント
+        ]
     }
+    
+    # マイナーキー進行（サビ）
     minor_chorus_pools = {
-        "pop": ["Am", "F", "C", "G"], # 小室進行 / マイナーポップ
-        "jazz": ["Am7", "D7", "Gmaj7", "Cmaj7"],
-        "rock": ["F", "G", "Am", "Am"],
-        "ambient": ["Fmaj7", "G6", "Am7", "Em7"]
+        "pop": [
+            ["F", "G", "Am", "C"],            # VI-VII-I-III クライマックス進行
+            ["Am", "F", "C", "G"],            # 王道マイナーサビ
+            ["Dm", "G", "C", "Am"],           # サブドミナント解決
+            ["F", "G", "Em", "Am"]            # VI-VII-v-i ドラマチック終止
+        ],
+        "jazz": [
+            ["Fmaj7", "E7", "Am7", "Am7"],    # VI-V-i-i ターンアラウンド
+            ["Bm7b5", "E7", "Am7", "A7"],     # iiø-V-i-VI7
+            ["Dm7", "G7", "Cmaj7", "Fmaj7"],  # サークルオブフィフスサビ
+            ["Am7", "D7", "Gmaj7", "Cmaj7"]   # メジャーマイナー境界進行
+        ],
+        "rock": [
+            ["F", "G", "Am", "Am"],           # VI-VII-i-i パワフルロック終止
+            ["Am", "G", "F", "G"],            # 標準的な哀愁ハードロックサビ
+            ["F", "C", "G", "Am"],            # VI-III-VII-i エピックロック
+            ["Am", "F", "G", "E7"]            # ヘヴィドラマチックサビ
+        ],
+        "ambient": [
+            ["Fmaj7", "G6", "Am7", "Em7"],    # ソフトランディング終止
+            ["Am7", "Fmaj7", "Dm7", "Em7"]     # メロウマイナー終止
+        ]
     }
     
     style_mapped = style.lower() if style.lower() in ("pop", "jazz", "rock", "ambient") else "pop"
@@ -148,11 +235,11 @@ def get_song_structure(total_bars_needed: int, key_mode: str, style: str) -> Lis
         style_mapped = "jazz"
         
     if key_mode == "minor":
-        verse_chords = minor_verse_pools[style_mapped]
-        chorus_chords = minor_chorus_pools[style_mapped]
+        verse_chords = random.choice(minor_verse_pools[style_mapped])
+        chorus_chords = random.choice(minor_chorus_pools[style_mapped])
     else:
-        verse_chords = major_verse_pools[style_mapped]
-        chorus_chords = major_chorus_pools[style_mapped]
+        verse_chords = random.choice(major_verse_pools[style_mapped])
+        chorus_chords = random.choice(major_chorus_pools[style_mapped])
 
     # Bメロ（Bridge）用コード進行：サビへの緊張感を高める進行（サブドミナントから開始など）
     bridge_chords = [verse_chords[2], verse_chords[3], chorus_chords[0], chorus_chords[1]]
