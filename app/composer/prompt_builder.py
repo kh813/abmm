@@ -442,6 +442,15 @@ PROGRESSION_MAP = {
 
 def expand_chord_plan_to_midi(plan: Dict[str, Any], duration_minutes: float) -> MidiComposition:
     """高次のコード進行・構成プランを具体的なMIDIノート（MidiComposition）へ拡張・展開する"""
+    import time
+    random.seed(time.time_ns())
+    
+    # 決定論的なマンネリを防ぐため、楽曲ごとに異なる伴奏アレンジパターンをランダム選択
+    piano_rhythm_pattern = random.choice(["standard", "syncopated", "offbeat", "ballad_arpeggio"])
+    guitar_arpeggio_pattern = random.choice(["classic_arp", "broken_chord", "syncopated_strum", "walking_arp"])
+    bass_rhythm_pattern = random.choice(["standard_bass", "walking_bass", "syncopated_bass", "bounce_bass"])
+    drum_fill_frequency = random.choice([2, 4, 8])
+    
     tempo_bpm = int(plan.get("tempo_bpm", 80))
     key_mode = plan.get("key_mode", "major")
     style = plan.get("style", "lofi").lower()
@@ -534,52 +543,87 @@ def expand_chord_plan_to_midi(plan: Dict[str, Any], duration_minutes: float) -> 
             # 1. ピアノ（コード・伴奏）トラック
             if "piano" in instruments:
                 if intensity == "low":
-                    # 静かなパート：白玉コード（小節頭で一回伸ばす。偶数・奇数小節で長さを変える）
-                    duration = 14 if b % 2 == 0 else 12
-                    for p in pitches:
-                        track_notes["piano"].append(MidiNote(step=base_step + 0, pitch=p, velocity=60, duration_steps=duration))
-                else:
-                    # 盛り上がるサビ：リズム感のあるコードバッキング
-                    # 4の倍数小節（ターンアラウンド）ではシンコペーションを強める
-                    if (b + 1) % 4 == 0:
-                        for p in pitches:
-                            track_notes["piano"].append(MidiNote(step=base_step + 0, pitch=p, velocity=75, duration_steps=4))
-                            track_notes["piano"].append(MidiNote(step=base_step + 6, pitch=p, velocity=75, duration_steps=4))
-                            track_notes["piano"].append(MidiNote(step=base_step + 12, pitch=p, velocity=70, duration_steps=3))
-                    elif b % 2 == 1:
-                        # 奇数小節：少しオフセットしたリズム
-                        for p in pitches:
-                            track_notes["piano"].append(MidiNote(step=base_step + 0, pitch=p, velocity=75, duration_steps=6))
-                            track_notes["piano"].append(MidiNote(step=base_step + 6, pitch=p, velocity=70, duration_steps=4))
-                            track_notes["piano"].append(MidiNote(step=base_step + 12, pitch=p, velocity=65, duration_steps=3))
+                    if piano_rhythm_pattern == "ballad_arpeggio":
+                        # アルペジオ分散和音
+                        for i, p in enumerate(pitches):
+                            step_offset = i * 4
+                            track_notes["piano"].append(MidiNote(step=base_step + step_offset, pitch=p, velocity=60, duration_steps=4))
                     else:
-                        # 偶数小節：通常のバッキング
+                        duration = random.choice([12, 14, 15])
                         for p in pitches:
-                            track_notes["piano"].append(MidiNote(step=base_step + 0, pitch=p, velocity=75, duration_steps=6))
-                            track_notes["piano"].append(MidiNote(step=base_step + 8, pitch=p, velocity=70, duration_steps=6))
+                            track_notes["piano"].append(MidiNote(step=base_step + 0, pitch=p, velocity=60, duration_steps=duration))
+                else:
+                    # サビ（高強度）のバッキングパターン分岐
+                    if piano_rhythm_pattern == "syncopated":
+                        offsets = [0, 3, 8, 11] if b % 2 == 0 else [0, 3, 6, 12]
+                        for step_offset in offsets:
+                            for p in pitches:
+                                track_notes["piano"].append(MidiNote(step=base_step + step_offset, pitch=p, velocity=75, duration_steps=3))
+                    elif piano_rhythm_pattern == "offbeat":
+                        # オフビートで弾むパターン
+                        for step_offset in [2, 6, 10, 14]:
+                            for p in pitches:
+                                track_notes["piano"].append(MidiNote(step=base_step + step_offset, pitch=p, velocity=72, duration_steps=2))
+                    elif piano_rhythm_pattern == "ballad_arpeggio":
+                        # 4つ刻みのバッキング
+                        for step_offset in [0, 4, 8, 12]:
+                            for p in pitches:
+                                track_notes["piano"].append(MidiNote(step=base_step + step_offset, pitch=p, velocity=70, duration_steps=3))
+                    else:
+                        # "standard" パターン
+                        if (b + 1) % 4 == 0:
+                            for p in pitches:
+                                track_notes["piano"].append(MidiNote(step=base_step + 0, pitch=p, velocity=75, duration_steps=4))
+                                track_notes["piano"].append(MidiNote(step=base_step + 6, pitch=p, velocity=75, duration_steps=4))
+                                track_notes["piano"].append(MidiNote(step=base_step + 12, pitch=p, velocity=70, duration_steps=3))
+                        elif b % 2 == 1:
+                            for p in pitches:
+                                track_notes["piano"].append(MidiNote(step=base_step + 0, pitch=p, velocity=75, duration_steps=6))
+                                track_notes["piano"].append(MidiNote(step=base_step + 6, pitch=p, velocity=70, duration_steps=4))
+                                track_notes["piano"].append(MidiNote(step=base_step + 12, pitch=p, velocity=65, duration_steps=3))
+                        else:
+                            for p in pitches:
+                                track_notes["piano"].append(MidiNote(step=base_step + 0, pitch=p, velocity=75, duration_steps=6))
+                                track_notes["piano"].append(MidiNote(step=base_step + 8, pitch=p, velocity=70, duration_steps=6))
                     
             # 2. ギター（アルペジオ）トラック
             if "guitar" in instruments:
                 if intensity == "low":
-                    # 静かなパート：音数を減らしたゆっくりしたアルペジオ（偶数・奇数小節でパターン変更）
-                    offsets = [0, 8] if b % 2 == 0 else [0, 6, 12]
+                    offsets = [0, 8] if b % 2 == 0 else [0, 4, 8, 12]
                     for i, step_offset in enumerate(offsets):
                         pitch_val = pitches[i % len(pitches)] + 12
-                        track_notes["guitar"].append(MidiNote(step=base_step + step_offset, pitch=pitch_val, velocity=55, duration_steps=5))
+                        track_notes["guitar"].append(MidiNote(step=base_step + step_offset, pitch=pitch_val, velocity=55, duration_steps=4))
                 else:
-                    # 盛り上がるパート：16ビートの細かなアルペジオ
-                    if b % 2 == 1:
-                        # 奇数小節パターン
-                        extended_pitches = [pitches[0], pitches[2], pitches[1], pitches[0]]
-                        step_offsets = [0, 4, 8, 12]
+                    if guitar_arpeggio_pattern == "broken_chord":
+                        # 低音と高音の交互アルペジオ
+                        offsets = [0, 2, 4, 6, 8, 10, 12, 14]
+                        for i, step_offset in enumerate(offsets):
+                            if i % 2 == 0:
+                                p_val = pitches[0] + 12
+                            else:
+                                p_val = pitches[i % len(pitches)] + 12
+                            track_notes["guitar"].append(MidiNote(step=base_step + step_offset, pitch=p_val, velocity=60, duration_steps=2))
+                    elif guitar_arpeggio_pattern == "syncopated_strum":
+                        # リズミカルなカッティング風
+                        for step_offset in [0, 3, 6, 8, 11, 14]:
+                            p_val = pitches[step_offset % len(pitches)] + 12
+                            track_notes["guitar"].append(MidiNote(step=base_step + step_offset, pitch=p_val, velocity=65, duration_steps=2))
+                    elif guitar_arpeggio_pattern == "walking_arp":
+                        # 上昇するアルペジオ
+                        for i in range(8):
+                            step_offset = i * 2
+                            p_val = pitches[i % len(pitches)] + 12
+                            track_notes["guitar"].append(MidiNote(step=base_step + step_offset, pitch=p_val, velocity=58, duration_steps=2))
                     else:
-                        # 偶数小節パターン
-                        extended_pitches = [pitches[0], pitches[1], pitches[2], pitches[1]]
+                        # "classic_arp" パターン
+                        if b % 2 == 1:
+                            extended_pitches = [pitches[0], pitches[2], pitches[1], pitches[0]]
+                        else:
+                            extended_pitches = [pitches[0], pitches[1], pitches[2], pitches[1]]
                         step_offsets = [0, 4, 8, 12]
-                        
-                    for i, (step_offset, p) in enumerate(zip(step_offsets, extended_pitches)):
-                        dur = 3 if i < 3 else (4 if (b + 1) % 4 == 0 else 3)
-                        track_notes["guitar"].append(MidiNote(step=base_step + step_offset, pitch=p + 12, velocity=65, duration_steps=dur))
+                        for i, (step_offset, p) in enumerate(zip(step_offsets, extended_pitches)):
+                            dur = 3 if i < 3 else (4 if (b + 1) % 4 == 0 else 3)
+                            track_notes["guitar"].append(MidiNote(step=base_step + step_offset, pitch=p + 12, velocity=65, duration_steps=dur))
                     
             # 3. ベーストラック
             if "bass" in instruments:
@@ -592,7 +636,6 @@ def expand_chord_plan_to_midi(plan: Dict[str, Any], duration_minutes: float) -> 
                         track_notes["bass"].append(MidiNote(step=base_step + beat_offset + 2, pitch=root_pitch, velocity=80, duration_steps=1))
                         track_notes["bass"].append(MidiNote(step=base_step + beat_offset + 3, pitch=root_pitch, velocity=85, duration_steps=1))
                 elif intensity == "low":
-                    # Aメロなどは全音符でルートを支えつつ、奇数小節の最後で5度を入れて繋げる
                     if b % 2 == 1 and len(pitches) > 2:
                         fifth_pitch = pitches[2] - 24
                         track_notes["bass"].append(MidiNote(step=base_step + 0, pitch=root_pitch, velocity=75, duration_steps=10))
@@ -600,24 +643,43 @@ def expand_chord_plan_to_midi(plan: Dict[str, Any], duration_minutes: float) -> 
                     else:
                         track_notes["bass"].append(MidiNote(step=base_step + 0, pitch=root_pitch, velocity=75, duration_steps=14))
                 else:
-                    # サビは8ビートやシンコペーションでリズムを刻む
-                    # 次のコードに向かうアプローチノート（半音接続）を4拍目で演奏
-                    next_chord_name = chords[(b + 1) % len(chords)]
-                    next_pitches = get_chord_pitches(next_chord_name, key_offset)
-                    next_root = next_pitches[0] - 24
-                    
-                    if (b + 1) % 4 == 0:
-                        # ターンアラウンド：活動的なラインとアプローチノート
+                    # サビ（高強度）のベースパターン分岐
+                    if bass_rhythm_pattern == "walking_bass":
+                        fifth_pitch = pitches[2] - 24 if len(pitches) > 2 else root_pitch + 7
+                        third_pitch = pitches[1] - 24 if len(pitches) > 1 else root_pitch + 4
+                        steps_and_pitches = [
+                            (0, root_pitch),
+                            (4, third_pitch),
+                            (8, fifth_pitch),
+                            (12, root_pitch + 12 if random.random() < 0.5 else root_pitch)
+                        ]
+                        for step_val, p_val in steps_and_pitches:
+                            track_notes["bass"].append(MidiNote(step=base_step + step_val, pitch=p_val, velocity=80, duration_steps=3))
+                    elif bass_rhythm_pattern == "syncopated_bass":
                         track_notes["bass"].append(MidiNote(step=base_step + 0, pitch=root_pitch, velocity=85, duration_steps=4))
                         track_notes["bass"].append(MidiNote(step=base_step + 6, pitch=root_pitch, velocity=80, duration_steps=4))
-                        approach_pitch = next_root + 1 if root_pitch > next_root else next_root - 1
-                        track_notes["bass"].append(MidiNote(step=base_step + 12, pitch=approach_pitch, velocity=85, duration_steps=3))
+                        track_notes["bass"].append(MidiNote(step=base_step + 12, pitch=root_pitch, velocity=85, duration_steps=3))
+                    elif bass_rhythm_pattern == "bounce_bass":
+                        track_notes["bass"].append(MidiNote(step=base_step + 0, pitch=root_pitch, velocity=85, duration_steps=3))
+                        track_notes["bass"].append(MidiNote(step=base_step + 4, pitch=root_pitch + 12, velocity=78, duration_steps=3))
+                        track_notes["bass"].append(MidiNote(step=base_step + 8, pitch=root_pitch, velocity=85, duration_steps=3))
+                        track_notes["bass"].append(MidiNote(step=base_step + 12, pitch=root_pitch + 12, velocity=78, duration_steps=3))
                     else:
-                        # 通常のサビ：3拍目の裏で5度を鳴らし、4拍目の頭でオクターブ上へ接続
-                        track_notes["bass"].append(MidiNote(step=base_step + 0, pitch=root_pitch, velocity=85, duration_steps=6))
-                        fifth_pitch = pitches[2] - 24 if len(pitches) > 2 else root_pitch + 7
-                        track_notes["bass"].append(MidiNote(step=base_step + 8, pitch=fifth_pitch, velocity=80, duration_steps=4))
-                        track_notes["bass"].append(MidiNote(step=base_step + 12, pitch=root_pitch + 12, velocity=75, duration_steps=3))
+                        # "standard_bass"
+                        next_chord_name = chords[(b + 1) % len(chords)]
+                        next_pitches = get_chord_pitches(next_chord_name, key_offset)
+                        next_root = next_pitches[0] - 24
+                        
+                        if (b + 1) % 4 == 0:
+                            track_notes["bass"].append(MidiNote(step=base_step + 0, pitch=root_pitch, velocity=85, duration_steps=4))
+                            track_notes["bass"].append(MidiNote(step=base_step + 6, pitch=root_pitch, velocity=80, duration_steps=4))
+                            approach_pitch = next_root + 1 if root_pitch > next_root else next_root - 1
+                            track_notes["bass"].append(MidiNote(step=base_step + 12, pitch=approach_pitch, velocity=85, duration_steps=3))
+                        else:
+                            track_notes["bass"].append(MidiNote(step=base_step + 0, pitch=root_pitch, velocity=85, duration_steps=6))
+                            fifth_pitch = pitches[2] - 24 if len(pitches) > 2 else root_pitch + 7
+                            track_notes["bass"].append(MidiNote(step=base_step + 8, pitch=fifth_pitch, velocity=80, duration_steps=4))
+                            track_notes["bass"].append(MidiNote(step=base_step + 12, pitch=root_pitch + 12, velocity=75, duration_steps=3))
                 
             # 4. ドラムトラック (Channel 9, Kick=36, Snare=38, Hihat=42)
             if "drums" in instruments:
@@ -629,7 +691,7 @@ def expand_chord_plan_to_midi(plan: Dict[str, Any], duration_minutes: float) -> 
                     track_notes["drums"].append(MidiNote(step=base_step + 12, pitch=38, velocity=95, duration_steps=2))
                     for h in [2, 6, 10, 14]:
                         track_notes["drums"].append(MidiNote(step=base_step + h, pitch=42, velocity=80, duration_steps=1))
-                    if (b + 1) % 4 == 0:
+                    if (b + 1) % drum_fill_frequency == 0:
                         for h in [8, 10, 12, 13, 14, 15]:
                             track_notes["drums"].append(MidiNote(step=base_step + h, pitch=38, velocity=90, duration_steps=1))
                 elif style == "chillhop":
@@ -660,8 +722,8 @@ def expand_chord_plan_to_midi(plan: Dict[str, Any], duration_minutes: float) -> 
                     if b % 2 == 0:
                         track_notes["drums"].append(MidiNote(step=base_step + 0, pitch=42, velocity=50, duration_steps=1))
                 else:
-                    # 通常ドラムパターン：4の倍数小節の後半でドラムフィルを入れる
-                    if (b + 1) % 4 == 0:
+                    # 通常ドラムパターン：drum_fill_frequency小節の後半でドラムフィルを入れる
+                    if (b + 1) % drum_fill_frequency == 0:
                         # キック
                         track_notes["drums"].append(MidiNote(step=base_step + 0, pitch=36, velocity=95, duration_steps=2))
                         # スネア (2拍)
