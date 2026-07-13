@@ -703,41 +703,79 @@ def expand_chord_plan_to_midi(plan: Dict[str, Any], duration_minutes: float) -> 
 
 import re
 
+def extract_chords_from_raw_tab(text: str) -> list[str]:
+    """生のコード譜テキスト（歌詞付きなど）からコード進行記号のみを抽出する"""
+    # コードとして認識する一般的なパターン（7sus4, 7sus, add9, m7b5 などもサポート）
+    chord_pattern = re.compile(
+        r'\b([A-G][#b]?(?:maj7|maj9|maj|min7|min9|m7b5|m7|m9|m|dim7|dim|aug|sus4|sus2|sus|7sus4|7sus|7|9|11|13|add9)?(?:\/[A-G][#b]?)?)\b'
+    )
+    
+    found_chords = []
+    lines = text.split('\n')
+    for line in lines:
+        tokens = line.split()
+        if not tokens:
+            continue
+            
+        chord_count = 0
+        line_chords = []
+        for token in tokens:
+            clean_token = token.strip("()[]{}|:,.-")
+            if chord_pattern.fullmatch(clean_token):
+                chord_count += 1
+                line_chords.append(clean_token)
+                
+        # トークンの大半がコード、あるいは特定のセクション指示行の場合にコード行とみなす
+        if chord_count > 0 and (chord_count / len(tokens) >= 0.5 or len(line_chords) >= 2):
+            found_chords.extend(line_chords)
+            
+    return found_chords
+
 def parse_dsl_description(description: str) -> Optional[Dict[str, Any]]:
     """
     ユーザーの自然言語指示の中に DSL 形式 [Am7 -> D7 -> Gmaj7 -> Cmaj7 : 4 bars : style=jazz] があるか確認し、
-    パースして辞書を返す。なければ None。
+    パースして辞書を返す。なければ Raw Tab からのコード抽出を試みる。
     """
     match = re.search(r'\[([^\]]+)\]', description)
-    if not match:
-        return None
+    if match:
+        dsl_content = match.group(1).strip()
+        # セクションヘッダー（例: [Intro], [Verse], [サビ] など）はDSLとしては無視してRaw Tab処理に回す
+        header_words = {"intro", "verse", "chorus", "bridge", "outro", "solo", "interlude", "aメロ", "bメロ", "サビ", "イントロ", "アウトロ"}
+        is_header = any(hw in dsl_content.lower() for hw in header_words)
         
-    dsl_content = match.group(1).strip()
-    parts = [p.strip() for p in dsl_content.split(':')]
-    
-    # 進行の抽出
-    chord_part = parts[0]
-    chords = [c.strip() for c in re.split(r'->| |,', chord_part) if c.strip()]
-    if not chords:
-        return None
-        
-    result = {
-        "custom_chords": chords
-    }
-    
-    # オプション（小節数、スタイル）のパース
-    for part in parts[1:]:
-        part_lower = part.lower()
-        if "bars" in part_lower or "bar" in part_lower:
-            bar_match = re.search(r'(\d+)', part_lower)
-            if bar_match:
-                result["custom_bars"] = int(bar_match.group(1))
-        elif "style=" in part_lower:
-            result["style"] = part.split('=')[1].strip()
-        elif part_lower in ("lofi", "jazz", "pop", "ambient", "rock"):
-            result["style"] = part_lower
+        if not is_header:
+            parts = [p.strip() for p in dsl_content.split(':')]
             
-    return result
+            # 進行の抽出
+            chord_part = parts[0]
+            chords = [c.strip() for c in re.split(r'->| |,', chord_part) if c.strip()]
+            if chords:
+                result = {
+                    "custom_chords": chords
+                }
+                
+                # オプション（小節数、スタイル）のパース
+                for part in parts[1:]:
+                    part_lower = part.lower()
+                    if "bars" in part_lower or "bar" in part_lower:
+                        bar_match = re.search(r'(\d+)', part_lower)
+                        if bar_match:
+                            result["custom_bars"] = int(bar_match.group(1))
+                    elif "style=" in part_lower:
+                        result["style"] = part.split('=')[1].strip()
+                    elif part_lower in ("lofi", "jazz", "pop", "ambient", "rock", "edm", "trance", "chillhop", "triphop"):
+                        result["style"] = part_lower
+                        
+                return result
+
+    # DSL形式がない場合、入力テキストから直接コード進行の自動抽出を試みる (Raw Tab対応)
+    chords = extract_chords_from_raw_tab(description)
+    if len(chords) >= 4:
+        return {
+            "custom_chords": chords
+        }
+        
+    return None
 
 def generate_midi_json(
     client: OllamaClient,

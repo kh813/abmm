@@ -22,6 +22,21 @@ def test_parse_dsl_description():
     # Empty
     assert parse_dsl_description("Just natural language without brackets") is None
 
+def test_extract_chords_from_raw_tab():
+    raw_tab = """
+    [Intro]
+    Em7   G   Dsus4   A7sus4
+    
+    [Verse 1]
+    Em7          G
+    Today is gonna be the day that they're
+    Dsus4             A7sus4
+    gonna throw it back to you
+    """
+    res = parse_dsl_description(raw_tab)
+    assert res is not None
+    assert res["custom_chords"] == ["Em7", "G", "Dsus4", "A7sus4", "Em7", "G", "Dsus4", "A7sus4"]
+
 def test_dsl_midi_generation():
     client = MagicMock()
     # If DSL is detected, client.generate should NOT be called at all!
