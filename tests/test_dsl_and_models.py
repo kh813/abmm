@@ -37,6 +37,14 @@ def test_extract_chords_from_raw_tab():
     assert res is not None
     assert res["custom_chords"] == ["Em7", "G", "Dsus4", "A7sus4", "Em7", "G", "Dsus4", "A7sus4"]
 
+    # Test style name noise word filtering (should not extract "pop" or "lofi" as chords)
+    noise_tab = "Here is a list of styles: [pop] [lofi] which are not chords"
+    assert parse_dsl_description(noise_tab) is None
+
+    # Test sentence with accidental chord-like words (should fail ratio threshold 0.6)
+    sentence_with_a = "A major breakthrough happened in the morning and we had Am coffee."
+    assert parse_dsl_description(sentence_with_a) is None
+
 def test_dsl_midi_generation():
     client = MagicMock()
     # If DSL is detected, client.generate should NOT be called at all!

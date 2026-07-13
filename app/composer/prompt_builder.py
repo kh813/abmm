@@ -814,13 +814,33 @@ def expand_chord_plan_to_midi(plan: Dict[str, Any], duration_minutes: float) -> 
 
 import re
 
+# コードとして誤認識されやすい、スタイル名・ジャンル名・一般的な単語のノイズリスト。
+# これらは chord_pattern の正規表現にはマッチしてしまう（例: "pop" の p は無視されるが
+# 単体の "A" や "Am"（morning の略）等はコードと見分けがつかない）ため、
+# DSL やタブ抽出の入力から明示的に除外する。
+_CHORD_NOISE_WORDS = {
+    "pop", "jazz", "rock", "ambient", "lofi", "edm", "trance", "chillhop",
+    "triphop", "classical", "hiphop", "hip-hop", "folk", "funk", "blues",
+    "reggae", "house", "techno", "major", "minor", "auto",
+}
+# 注意: "A" や "Am" は実在のコード表記（A / Aマイナー）として正当なため、
+# ノイズ扱いにはしない。英文の冒頭に出る "A"（冠詞）は行単位の閾値判定
+# （chord_count >= 2 かつ比率 0.6 以上）である程度弾かれる。
+
+_CHORD_TOKEN_PATTERN = re.compile(
+    r'([A-G][#b]?(?:maj7|maj9|maj|min7|min9|m7b5|m7|m9|m|dim7|dim|aug|sus4|sus2|sus|7sus4|7sus|7|9|11|13|add9)?(?:\/[A-G][#b]?)?)'
+)
+
+def _is_valid_chord_token(token: str) -> bool:
+    """トークンが実在のコード表記らしいかを判定する（スタイル名やただの単語を除外）"""
+    if not token:
+        return False
+    if token.lower() in _CHORD_NOISE_WORDS:
+        return False
+    return bool(_CHORD_TOKEN_PATTERN.fullmatch(token))
+
 def extract_chords_from_raw_tab(text: str) -> list[str]:
     """生のコード譜テキスト（歌詞付きなど）からコード進行記号のみを抽出する"""
-    # コードとして認識する一般的なパターン（7sus4, 7sus, add9, m7b5 などもサポート）
-    chord_pattern = re.compile(
-        r'\b([A-G][#b]?(?:maj7|maj9|maj|min7|min9|m7b5|m7|m9|m|dim7|dim|aug|sus4|sus2|sus|7sus4|7sus|7|9|11|13|add9)?(?:\/[A-G][#b]?)?)\b'
-    )
-    
     found_chords = []
     lines = text.split('\n')
     for line in lines:
@@ -832,12 +852,13 @@ def extract_chords_from_raw_tab(text: str) -> list[str]:
         line_chords = []
         for token in tokens:
             clean_token = token.strip("()[]{}|:,.-")
-            if chord_pattern.fullmatch(clean_token):
+            if _is_valid_chord_token(clean_token):
                 chord_count += 1
                 line_chords.append(clean_token)
                 
         # トークンの大半がコード、あるいは特定のセクション指示行の場合にコード行とみなす
-        if chord_count > 0 and (chord_count / len(tokens) >= 0.5 or len(line_chords) >= 2):
+        # (通常の文章にコードらしき単語が1〜2個混ざる誤検出を防ぐため閾値をやや厳しくする)
+        if chord_count >= 2 and chord_count / len(tokens) >= 0.6:
             found_chords.extend(line_chords)
             
     return found_chords
@@ -859,8 +880,12 @@ def parse_dsl_description(description: str) -> Optional[Dict[str, Any]]:
             
             # 進行の抽出
             chord_part = parts[0]
-            chords = [c.strip() for c in re.split(r'->| |,', chord_part) if c.strip()]
-            if chords:
+            raw_tokens = [c.strip() for c in re.split(r'->| |,', chord_part) if c.strip()]
+            # "[pop]" や "[lofi]" のようなスタイル指定・非コード文字列を
+            # コード進行として誤採用しないよう、実在するコード表記のみを残す。
+            # 有効なコードが2つ未満しか無ければ、DSLとしては扱わずフォールスルーする。
+            chords = [c for c in raw_tokens if _is_valid_chord_token(c)]
+            if len(chords) >= 2:
                 result = {
                     "custom_chords": chords
                 }
