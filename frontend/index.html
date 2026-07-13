@@ -36,6 +36,39 @@
             <textarea id="prompt-input" placeholder="例: 雨上がりの午後、少し切ないローファイジャズ。イントロは静かなピアノ、途中からアコギが入って展開する穏やかな雰囲気。"></textarea>
           </div>
 
+          <!-- Genre and Chord Progression Selectors -->
+          <div class="genre-chord-row">
+            <div class="input-group">
+              <label for="genre-select">ジャンル</label>
+              <select id="genre-select">
+                <option value="auto">おまかせ (自動判定)</option>
+                <option value="pop">Pop (ポップス)</option>
+                <option value="jazz">Jazz (ジャズ・Lofi)</option>
+                <option value="rock">Rock (ロック・バラード)</option>
+                <option value="ambient">Ambient (アンビエント)</option>
+              </select>
+            </div>
+            <div class="input-group">
+              <label for="progression-select">コード進行</label>
+              <select id="progression-select">
+                <option value="auto">おまかせ (自動生成)</option>
+                <optgroup label="明るい進行 (Major)">
+                  <option value="royal_road">王道進行 (J-Pop王道・明るく劇的)</option>
+                  <option value="canon">カノン進行 (美しい・叙情的)</option>
+                  <option value="stand_by_me">50年代進行 (レトロ・弾むような)</option>
+                  <option value="descending_bass">ベース下降進行 (Oasis風・切ない)</option>
+                  <option value="simple_folk">シンプルフォーク (素朴・温かい)</option>
+                </optgroup>
+                <optgroup label="切ない進行 (Minor)">
+                  <option value="komuro">小室進行 (哀愁・アニソン定番)</option>
+                  <option value="andalusian">アンダルシア進行 (哀愁ロック・情熱的)</option>
+                  <option value="fifths">五度圏進行 (美しく広がるマイナー)</option>
+                  <option value="dorian_rock">ドリアンロック (クール・浮遊感)</option>
+                </optgroup>
+              </select>
+            </div>
+          </div>
+
           <!-- Ollama LLM Connection Status -->
           <div class="ollama-status-card" id="ollama-status-card">
             <div class="status-header">

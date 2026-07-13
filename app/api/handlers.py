@@ -177,6 +177,9 @@ class WebviewApi:
             self._notify_status("MIDI作曲中...")
             self._notify_progress(0.0)
 
+            genre = params.get("genre", "auto")
+            chord_progression = params.get("chord_progression", "auto")
+
             # 1. MIDI JSONの生成 (Ollama)
             composition = generate_midi_json(
                 client=self.llm_client,
@@ -187,7 +190,9 @@ class WebviewApi:
                 brightness=brightness,
                 energy=energy,
                 density=density,
-                instruments=instruments
+                instruments=instruments,
+                genre=genre,
+                chord_progression=chord_progression
             )
             self.last_composition = composition
             self._notify_progress(0.2)
@@ -270,7 +275,9 @@ class WebviewApi:
                 brightness=float(kwargs.get("brightness", 0.5)),
                 energy=float(kwargs.get("energy", 0.5)),
                 density=float(kwargs.get("density", 0.5)),
-                instruments=kwargs.get("instruments")
+                instruments=kwargs.get("instruments"),
+                genre=kwargs.get("genre", "auto"),
+                chord_progression=kwargs.get("chord_progression", "auto")
             )
             self.last_composition = composition
             midi_bytes = json_to_midi(composition)

@@ -112,7 +112,7 @@ Please generate a corresponding JSON output.
 """
     return prompt
 
-def get_song_structure(total_bars_needed: int, key_mode: str, style: str) -> List[Dict[str, Any]]:
+def get_song_structure(total_bars_needed: int, key_mode: str, style: str, custom_chords_tuple: Optional[tuple] = None) -> List[Dict[str, Any]]:
     """音楽理論的セオリーに基づき、イントロ、サビ、Aメロ、Bメロ、アウトロの曲構成とコード進行を構築する"""
     
     # 決定論的なマンネリを防ぐため、毎回異なるコード進行プールから選択
@@ -234,12 +234,15 @@ def get_song_structure(total_bars_needed: int, key_mode: str, style: str) -> Lis
     if style.lower() == "lofi":
         style_mapped = "jazz"
         
-    if key_mode == "minor":
-        verse_chords = random.choice(minor_verse_pools[style_mapped])
-        chorus_chords = random.choice(minor_chorus_pools[style_mapped])
+    if custom_chords_tuple:
+        verse_chords, chorus_chords = custom_chords_tuple
     else:
-        verse_chords = random.choice(major_verse_pools[style_mapped])
-        chorus_chords = random.choice(major_chorus_pools[style_mapped])
+        if key_mode == "minor":
+            verse_chords = random.choice(minor_verse_pools[style_mapped])
+            chorus_chords = random.choice(minor_chorus_pools[style_mapped])
+        else:
+            verse_chords = random.choice(major_verse_pools[style_mapped])
+            chorus_chords = random.choice(major_chorus_pools[style_mapped])
 
     # Bメロ（Bridge）用コード進行：サビへの緊張感を高める進行（サブドミナントから開始など）
     bridge_chords = [verse_chords[2], verse_chords[3], chorus_chords[0], chorus_chords[1]]
@@ -299,11 +302,34 @@ def get_song_structure(total_bars_needed: int, key_mode: str, style: str) -> Lis
         current_bar += sec["bars"]
     return final_sections
 
+PROGRESSION_MAP = {
+    # Major key custom progressions (Verse, Chorus)
+    "royal_road": (["Fmaj7", "G7", "Em7", "Am7"], ["Fmaj7", "G7", "Em7", "Am7"]),
+    "canon": (["C", "G", "Am", "Em", "F", "C", "F", "G"], ["C", "G", "Am", "Em", "F", "C", "F", "G"]),
+    "stand_by_me": (["C", "Am", "F", "G"], ["C", "Am", "F", "G"]),
+    "descending_bass": (["C", "G/B", "Am", "G"], ["C", "G/B", "Am", "G"]),
+    "simple_folk": (["C", "F", "C", "G"], ["C", "F", "C", "G"]),
+    
+    # Minor key custom progressions (Verse, Chorus)
+    "komuro": (["Am", "F", "C", "G"], ["F", "G", "Am", "C"]),
+    "andalusian": (["Am", "G", "F", "E7"], ["F", "G", "Am", "Am"]),
+    "fifths": (["Am", "Dm", "G", "C"], ["Dm", "G", "C", "Am"]),
+    "dorian_rock": (["Am", "C", "D", "F"], ["Am", "G", "F", "G"])
+}
+
 def expand_chord_plan_to_midi(plan: Dict[str, Any], duration_minutes: float) -> MidiComposition:
     """高次のコード進行・構成プランを具体的なMIDIノート（MidiComposition）へ拡張・展開する"""
     tempo_bpm = int(plan.get("tempo_bpm", 80))
     key_mode = plan.get("key_mode", "major")
     style = plan.get("style", "lofi").lower()
+    
+    # ジャンル指定のオーバーライド
+    genre = plan.get("genre", "auto")
+    if genre != "auto":
+        style = genre.lower()
+        if style == "lofi":
+            style = "jazz"
+            
     instruments = plan.get("instruments", ["piano", "guitar", "bass", "drums"])
     
     # 指定の再生時間をカバーするのに必要な総小節数を計算
@@ -339,8 +365,14 @@ def expand_chord_plan_to_midi(plan: Dict[str, Any], duration_minutes: float) -> 
             })
             current_bar += section_bars
     else:
+        # コード進行のオーバーライド
+        chord_prog = plan.get("chord_progression", "auto")
+        custom_tuple = None
+        if chord_prog != "auto" and chord_prog in PROGRESSION_MAP:
+            custom_tuple = PROGRESSION_MAP[chord_prog]
+            
         # 曲のセクション構成を動的に生成
-        sections = get_song_structure(total_bars_needed, key_mode, style)
+        sections = get_song_structure(total_bars_needed, key_mode, style, custom_chords_tuple=custom_tuple)
 
     # 各楽器トラックごとのノート生成
     track_notes: Dict[str, List[MidiNote]] = {
@@ -588,7 +620,9 @@ def generate_midi_json(
     energy: float = 0.5,
     density: float = 0.5,
     instruments: Optional[Dict[str, float]] = None,
-    max_retries: int = 2
+    max_retries: int = 2,
+    genre: str = "auto",
+    chord_progression: str = "auto"
 ) -> MidiComposition:
     """
     Ollama経由でLLMに高次のコード構成案を生成させ、それをPython側で展開して完全なMidiCompositionを構築する。
@@ -609,7 +643,9 @@ def generate_midi_json(
             "style": dsl_plan.get("style", "lofi"),
             "instruments": inst_list,
             "custom_chords": dsl_plan["custom_chords"],
-            "custom_bars": dsl_plan.get("custom_bars")
+            "custom_bars": dsl_plan.get("custom_bars"),
+            "genre": genre,
+            "chord_progression": chord_progression
         }
         return expand_chord_plan_to_midi(plan, duration_minutes)
 
@@ -655,6 +691,8 @@ def generate_midi_json(
                 clean_text = clean_text.strip()
 
             plan = json.loads(clean_text)
+            plan["genre"] = genre
+            plan["chord_progression"] = chord_progression
             
             # 展開処理の実行
             composition = expand_chord_plan_to_midi(plan, duration_minutes)
@@ -670,6 +708,8 @@ def generate_midi_json(
         "tempo_bpm": tempo_bpm,
         "key_mode": key_mode,
         "style": "lofi",
-        "instruments": ["piano", "guitar", "bass", "drums"]
+        "instruments": ["piano", "guitar", "bass", "drums"],
+        "genre": genre,
+        "chord_progression": chord_progression
     }
     return expand_chord_plan_to_midi(default_plan, duration_minutes)

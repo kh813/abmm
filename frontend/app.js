@@ -171,6 +171,9 @@ document.addEventListener("DOMContentLoaded", () => {
       progressPercent.textContent = "0%";
       progressStatusText.textContent = "MIDI生成要求の準備中...";
 
+      const genreSelect = document.getElementById("genre-select");
+      const progressionSelect = document.getElementById("progression-select");
+
       const params = {
         description: description,
         tempo: tempo,
@@ -183,7 +186,9 @@ document.addEventListener("DOMContentLoaded", () => {
         instruments: instruments,
         ollama_model: ollamaModelSelect.value,
         model_tier: "Lite",
-        preview_only: false
+        preview_only: false,
+        genre: genreSelect ? genreSelect.value : "auto",
+        chord_progression: progressionSelect ? progressionSelect.value : "auto"
       };
 
       // 非同期レンダリングをキック
@@ -372,6 +377,8 @@ document.addEventListener("DOMContentLoaded", () => {
       energy: parseFloat(energySlider.value),
       density: parseFloat(densitySlider.value),
       reverb_space: parseFloat(reverbSlider.value),
+      genre: genreSelect ? genreSelect.value : "auto",
+      chord_progression: progressionSelect ? progressionSelect.value : "auto",
       instruments: {
         piano: parseFloat(instPiano.value),
         guitar: parseFloat(instGuitar.value),
@@ -460,6 +467,14 @@ document.addEventListener("DOMContentLoaded", () => {
           
           instBass.value = inst.bass !== undefined ? inst.bass : 0.4;
           instBassValue.textContent = parseFloat(instBass.value).toFixed(1);
+        }
+
+        // ジャンル・コード進行の復元
+        if (params.genre !== undefined && genreSelect) {
+          genreSelect.value = params.genre;
+        }
+        if (params.chord_progression !== undefined && progressionSelect) {
+          progressionSelect.value = params.chord_progression;
         }
 
         // トラックリストの読み込み

@@ -50,3 +50,19 @@ def test_detect_hardware_spec_llms():
     assert "recommended_llm_models" in specs
     assert isinstance(specs["recommended_llm_models"], list)
     assert len(specs["recommended_llm_models"]) > 0
+
+def test_genre_and_progression_overrides():
+    client = MagicMock()
+    # Test fallback flow with explicit genre and progression
+    composition = generate_midi_json(
+        client=client,
+        description="Write a song",
+        tempo_bpm=80,
+        key_mode="major",
+        duration_minutes=1.0,
+        genre="rock",
+        chord_progression="royal_road"
+    )
+    assert len(composition.tracks) > 0
+    piano_track = next(t for t in composition.tracks if "piano" in t.track_name.lower())
+    assert len(piano_track.notes) > 0

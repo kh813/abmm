@@ -1018,6 +1018,34 @@ audio {
   margin-top: 0.5rem;
 }
 
+.genre-chord-row {
+  display: flex;
+  gap: 1rem;
+  margin-top: 0.25rem;
+}
+
+.genre-chord-row .input-group {
+  flex: 1;
+}
+
+.genre-chord-row select {
+  font-family: var(--font-sans);
+  background-color: rgba(0, 0, 0, 0.02);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  color: var(--text-primary);
+  padding: 0.5rem 0.6rem;
+  font-size: 0.85rem;
+  outline: none;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.genre-chord-row select:hover {
+  border-color: var(--primary-accent);
+  background-color: rgba(0, 0, 0, 0.04);
+}
+
 
 
 
