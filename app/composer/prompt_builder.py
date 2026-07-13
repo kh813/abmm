@@ -150,6 +150,11 @@ def get_song_structure(total_bars_needed: int, key_mode: str, style: str, custom
             ["Am", "F", "C", "G"],            # 王道EDM 4コード
             ["F", "Am", "G", "C"],            # Avicii風ループ
             ["C", "Em", "Am", "F"]            # 高揚系メロディックEDM
+        ],
+        "trance": [
+            ["Am", "F", "C", "G"],            # クラシックトランス定番
+            ["F", "G", "Am", "Em"],           # 叙情トランス
+            ["Dm", "Bb", "F", "C"]            # 浮遊系トランス
         ]
     }
     
@@ -183,6 +188,11 @@ def get_song_structure(total_bars_needed: int, key_mode: str, style: str, custom
             ["F", "G", "Am", "C"],            # 上昇解決サビ
             ["Am", "F", "C", "G"],            # 定番ループ
             ["Fmaj7", "Am7", "G", "C"]        # メロウ解決
+        ],
+        "trance": [
+            ["F", "G", "Am", "G"],            # 疾走サビ
+            ["Am", "F", "C", "G"],            # 哀愁トランスループ
+            ["Fmaj7", "G", "Am", "Em"]        # エピックトランス解決
         ]
     }
     
@@ -215,6 +225,10 @@ def get_song_structure(total_bars_needed: int, key_mode: str, style: str, custom
         "edm": [
             ["Am", "F", "C", "G"],            # マイナーポップ調EDM
             ["F", "Dm", "Am", "G"]            # ディープハウス風
+        ],
+        "trance": [
+            ["Am", "F", "C", "G"],            # Robert Miles風 Childrenコード進行
+            ["Am", "Em", "F", "G"]            # 哀愁マイナートランス
         ]
     }
     
@@ -245,10 +259,14 @@ def get_song_structure(total_bars_needed: int, key_mode: str, style: str, custom
         "edm": [
             ["F", "G", "Am", "Em"],           # ドラマチック終止
             ["Am", "F", "C", "G"]             # フェスアンセム定番
+        ],
+        "trance": [
+            ["F", "G", "Am", "G"],            # トランスサビ解放
+            ["Am", "F", "C", "G"]             # 定番哀愁
         ]
     }
     
-    style_mapped = style.lower() if style.lower() in ("pop", "jazz", "rock", "ambient", "edm") else "pop"
+    style_mapped = style.lower() if style.lower() in ("pop", "jazz", "rock", "ambient", "edm", "trance") else "pop"
     if style.lower() == "lofi":
         style_mapped = "jazz"
         
@@ -334,7 +352,8 @@ PROGRESSION_MAP = {
     "andalusian": (["Am", "G", "F", "E7"], ["F", "G", "Am", "Am"]),
     "fifths": (["Am", "Dm", "G", "C"], ["Dm", "G", "C", "Am"]),
     "dorian_rock": (["Am", "C", "D", "F"], ["Am", "G", "F", "G"]),
-    "edm_loop": (["Am", "F", "C", "G"], ["Fmaj7", "Am7", "G", "C"]) # EDM風ループ
+    "edm_loop": (["Am", "F", "C", "G"], ["Fmaj7", "Am7", "G", "C"]), # EDM風ループ
+    "trance_epic": (["Am", "F", "C", "G"], ["F", "G", "Am", "Em"]) # エピックトランス風
 }
 
 def expand_chord_plan_to_midi(plan: Dict[str, Any], duration_minutes: float) -> MidiComposition:
@@ -349,6 +368,10 @@ def expand_chord_plan_to_midi(plan: Dict[str, Any], duration_minutes: float) -> 
         style = genre.lower()
         if style == "lofi":
             style = "jazz"
+            
+    # トランス / ドリームハウスの場合、テンポを138 BPM前後に強制設定
+    if style in ("trance", "dream_house"):
+        tempo_bpm = 138
             
     instruments = plan.get("instruments", ["piano", "guitar", "bass", "drums"])
     
@@ -473,7 +496,14 @@ def expand_chord_plan_to_midi(plan: Dict[str, Any], duration_minutes: float) -> 
             # 3. ベーストラック
             if "bass" in instruments:
                 root_pitch = pitches[0] - 24  # 2オクターブ低く
-                if intensity == "low":
+                if style == "trance":
+                    # トランス用ローリングベースライン (16分音符のギャロップ)
+                    for p_idx in range(4):
+                        beat_offset = p_idx * 4
+                        track_notes["bass"].append(MidiNote(step=base_step + beat_offset + 0, pitch=root_pitch, velocity=85, duration_steps=1))
+                        track_notes["bass"].append(MidiNote(step=base_step + beat_offset + 2, pitch=root_pitch, velocity=80, duration_steps=1))
+                        track_notes["bass"].append(MidiNote(step=base_step + beat_offset + 3, pitch=root_pitch, velocity=85, duration_steps=1))
+                elif intensity == "low":
                     # Aメロなどは全音符でルートを支えつつ、奇数小節の最後で5度を入れて繋げる
                     if b % 2 == 1 and len(pitches) > 2:
                         fifth_pitch = pitches[2] - 24
@@ -503,7 +533,7 @@ def expand_chord_plan_to_midi(plan: Dict[str, Any], duration_minutes: float) -> 
                 
             # 4. ドラムトラック (Channel 9, Kick=36, Snare=38, Hihat=42)
             if "drums" in instruments:
-                if style == "edm":
+                if style in ("edm", "trance"):
                     # EDM 4つ打ちドラムパターン
                     for k in [0, 4, 8, 12]:
                         track_notes["drums"].append(MidiNote(step=base_step + k, pitch=36, velocity=100, duration_steps=2))
@@ -568,8 +598,8 @@ def expand_chord_plan_to_midi(plan: Dict[str, Any], duration_minutes: float) -> 
         ))
         
     if "guitar" in instruments and track_notes["guitar"]:
-        inst_name = "synth_pad" if style == "edm" else "acoustic_guitar"
-        track_name = "Synth Pad" if style == "edm" else "Acoustic Guitar"
+        inst_name = "synth_pad" if style in ("edm", "trance") else "acoustic_guitar"
+        track_name = "Synth Pad" if style in ("edm", "trance") else "Acoustic Guitar"
         tracks.append(MidiTrack(
             track_id="track_guitar",
             track_name=track_name,
@@ -579,8 +609,8 @@ def expand_chord_plan_to_midi(plan: Dict[str, Any], duration_minutes: float) -> 
         ))
         
     if "bass" in instruments and track_notes["bass"]:
-        inst_name = "synth_bass" if style == "edm" else "electric_bass"
-        track_name = "Synth Bass" if style == "edm" else "Electric Bass"
+        inst_name = "synth_bass" if style in ("edm", "trance") else "electric_bass"
+        track_name = "Synth Bass" if style in ("edm", "trance") else "Electric Bass"
         tracks.append(MidiTrack(
             track_id="track_bass",
             track_name=track_name,
