@@ -145,6 +145,11 @@ def get_song_structure(total_bars_needed: int, key_mode: str, style: str, custom
             ["Cmaj7", "G6", "Am7", "Fmaj7"],     # モーダル展開
             ["Fmaj7", "G6", "Em7", "Am7"],       # ドリーミー展開
             ["Cmaj7", "D7", "Fmaj7", "Cmaj7"]    # リディアン風味
+        ],
+        "edm": [
+            ["Am", "F", "C", "G"],            # 王道EDM 4コード
+            ["F", "Am", "G", "C"],            # Avicii風ループ
+            ["C", "Em", "Am", "F"]            # 高揚系メロディックEDM
         ]
     }
     
@@ -173,6 +178,11 @@ def get_song_structure(total_bars_needed: int, key_mode: str, style: str, custom
             ["Am7", "Fmaj7", "Cmaj7", "G6"],  # 幻想的終止
             ["Cmaj7", "Em7", "Fmaj7", "G"],   # ゆっくりとした上昇
             ["Dm7", "Fmaj7", "G6", "Am7"]     # 催眠的リピート
+        ],
+        "edm": [
+            ["F", "G", "Am", "C"],            # 上昇解決サビ
+            ["Am", "F", "C", "G"],            # 定番ループ
+            ["Fmaj7", "Am7", "G", "C"]        # メロウ解決
         ]
     }
     
@@ -201,6 +211,10 @@ def get_song_structure(total_bars_needed: int, key_mode: str, style: str, custom
             ["Am7", "Dm7", "Fmaj7", "Em7"],   # ダークメディテーション
             ["Am7", "Em7", "Fmaj7", "G6"],    # フローティングマイナー
             ["Am7", "Bm7b5", "Cmaj7", "Em7"]  # ドリアンアンビエント
+        ],
+        "edm": [
+            ["Am", "F", "C", "G"],            # マイナーポップ調EDM
+            ["F", "Dm", "Am", "G"]            # ディープハウス風
         ]
     }
     
@@ -227,10 +241,14 @@ def get_song_structure(total_bars_needed: int, key_mode: str, style: str, custom
         "ambient": [
             ["Fmaj7", "G6", "Am7", "Em7"],    # ソフトランディング終止
             ["Am7", "Fmaj7", "Dm7", "Em7"]     # メロウマイナー終止
+        ],
+        "edm": [
+            ["F", "G", "Am", "Em"],           # ドラマチック終止
+            ["Am", "F", "C", "G"]             # フェスアンセム定番
         ]
     }
     
-    style_mapped = style.lower() if style.lower() in ("pop", "jazz", "rock", "ambient") else "pop"
+    style_mapped = style.lower() if style.lower() in ("pop", "jazz", "rock", "ambient", "edm") else "pop"
     if style.lower() == "lofi":
         style_mapped = "jazz"
         
@@ -309,12 +327,14 @@ PROGRESSION_MAP = {
     "stand_by_me": (["C", "Am", "F", "G"], ["C", "Am", "F", "G"]),
     "descending_bass": (["C", "G/B", "Am", "G"], ["C", "G/B", "Am", "G"]),
     "simple_folk": (["C", "F", "C", "G"], ["C", "F", "C", "G"]),
+    "noel": (["Em7", "G", "Dsus4", "A7sus4"], ["C", "G/B", "Am", "Fmaj7"]), # Noel Gallagher風
     
     # Minor key custom progressions (Verse, Chorus)
     "komuro": (["Am", "F", "C", "G"], ["F", "G", "Am", "C"]),
     "andalusian": (["Am", "G", "F", "E7"], ["F", "G", "Am", "Am"]),
     "fifths": (["Am", "Dm", "G", "C"], ["Dm", "G", "C", "Am"]),
-    "dorian_rock": (["Am", "C", "D", "F"], ["Am", "G", "F", "G"])
+    "dorian_rock": (["Am", "C", "D", "F"], ["Am", "G", "F", "G"]),
+    "edm_loop": (["Am", "F", "C", "G"], ["Fmaj7", "Am7", "G", "C"]) # EDM風ループ
 }
 
 def expand_chord_plan_to_midi(plan: Dict[str, Any], duration_minutes: float) -> MidiComposition:
@@ -483,7 +503,18 @@ def expand_chord_plan_to_midi(plan: Dict[str, Any], duration_minutes: float) -> 
                 
             # 4. ドラムトラック (Channel 9, Kick=36, Snare=38, Hihat=42)
             if "drums" in instruments:
-                if intensity == "low" and sec["name"] in ("intro", "outro"):
+                if style == "edm":
+                    # EDM 4つ打ちドラムパターン
+                    for k in [0, 4, 8, 12]:
+                        track_notes["drums"].append(MidiNote(step=base_step + k, pitch=36, velocity=100, duration_steps=2))
+                    track_notes["drums"].append(MidiNote(step=base_step + 4, pitch=38, velocity=95, duration_steps=2))
+                    track_notes["drums"].append(MidiNote(step=base_step + 12, pitch=38, velocity=95, duration_steps=2))
+                    for h in [2, 6, 10, 14]:
+                        track_notes["drums"].append(MidiNote(step=base_step + h, pitch=42, velocity=80, duration_steps=1))
+                    if (b + 1) % 4 == 0:
+                        for h in [8, 10, 12, 13, 14, 15]:
+                            track_notes["drums"].append(MidiNote(step=base_step + h, pitch=38, velocity=90, duration_steps=1))
+                elif intensity == "low" and sec["name"] in ("intro", "outro"):
                     # イントロやアウトロはドラムなし、または非常に薄いハイハットのみ
                     if b % 2 == 0:
                         track_notes["drums"].append(MidiNote(step=base_step + 0, pitch=42, velocity=50, duration_steps=1))
@@ -526,28 +557,34 @@ def expand_chord_plan_to_midi(plan: Dict[str, Any], duration_minutes: float) -> 
     # トラックオブジェクトの構築
     tracks = []
     if "piano" in instruments and track_notes["piano"]:
+        inst_name = "synth_lead" if style == "edm" else "acoustic_piano"
+        track_name = "Synth Lead" if style == "edm" else "Acoustic Piano"
         tracks.append(MidiTrack(
             track_id="track_piano",
-            track_name="Acoustic Piano",
-            instrument="acoustic_piano",
+            track_name=track_name,
+            instrument=inst_name,
             channel=0,
             notes=track_notes["piano"]
         ))
         
     if "guitar" in instruments and track_notes["guitar"]:
+        inst_name = "synth_pad" if style == "edm" else "acoustic_guitar"
+        track_name = "Synth Pad" if style == "edm" else "Acoustic Guitar"
         tracks.append(MidiTrack(
             track_id="track_guitar",
-            track_name="Acoustic Guitar",
-            instrument="acoustic_guitar",
+            track_name=track_name,
+            instrument=inst_name,
             channel=1,
             notes=track_notes["guitar"]
         ))
         
     if "bass" in instruments and track_notes["bass"]:
+        inst_name = "synth_bass" if style == "edm" else "electric_bass"
+        track_name = "Synth Bass" if style == "edm" else "Electric Bass"
         tracks.append(MidiTrack(
             track_id="track_bass",
-            track_name="Electric Bass",
-            instrument="electric_bass",
+            track_name=track_name,
+            instrument=inst_name,
             channel=2,
             notes=track_notes["bass"]
         ))
