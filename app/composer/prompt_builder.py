@@ -155,6 +155,15 @@ def get_song_structure(total_bars_needed: int, key_mode: str, style: str, custom
             ["Am", "F", "C", "G"],            # クラシックトランス定番
             ["F", "G", "Am", "Em"],           # 叙情トランス
             ["Dm", "Bb", "F", "C"]            # 浮遊系トランス
+        ],
+        "chillhop": [
+            ["Fmaj7", "E7", "Am7", "Gm7", "C7"], # Nujabes風 ジャズヒップホップ
+            ["Cmaj7", "Am7", "Dm7", "G7"],    # 2-5-1 循環
+            ["Dm7", "G7", "Em7", "Am7"]        # メロウヒップホップ
+        ],
+        "triphop": [
+            ["Cmaj7", "Abmaj7", "Dm7", "G7"], # ダークチルアウト
+            ["Cmaj7", "Fmaj7", "Fm6", "Cmaj7"] # 憂鬱なメロウ
         ]
     }
     
@@ -193,6 +202,14 @@ def get_song_structure(total_bars_needed: int, key_mode: str, style: str, custom
             ["F", "G", "Am", "G"],            # 疾走サビ
             ["Am", "F", "C", "G"],            # 哀愁トランスループ
             ["Fmaj7", "G", "Am", "Em"]        # エピックトランス解決
+        ],
+        "chillhop": [
+            ["Dm7", "G7", "Cmaj7", "Cmaj7"],  # ジャジーヒップホップ終止
+            ["Fmaj7", "Bb7", "Cmaj7", "A7"]   # バックドアサビ解決
+        ],
+        "triphop": [
+            ["Am7", "Fmaj7", "Dm7", "Em7"],   # チルアウト解決
+            ["Cmaj7", "Ab7", "Dbmaj7", "G7"]  # ダークネオソウル
         ]
     }
     
@@ -229,6 +246,14 @@ def get_song_structure(total_bars_needed: int, key_mode: str, style: str, custom
         "trance": [
             ["Am", "F", "C", "G"],            # Robert Miles風 Childrenコード進行
             ["Am", "Em", "F", "G"]            # 哀愁マイナートランス
+        ],
+        "chillhop": [
+            ["Am7", "D7", "Gmaj7", "Cmaj7"],  # ネオソウル風コードループ
+            ["Am7", "Dm7", "G7", "Cmaj7"]     # ジャジーメロウマイナー
+        ],
+        "triphop": [
+            ["Am", "Fmaj7", "Dm7", "E7"],     # ダークトリップホップ
+            ["Am7", "Bm7b5", "E7", "Am7"]     # 憂鬱マイナー循環
         ]
     }
     
@@ -263,10 +288,18 @@ def get_song_structure(total_bars_needed: int, key_mode: str, style: str, custom
         "trance": [
             ["F", "G", "Am", "G"],            # トランスサビ解放
             ["Am", "F", "C", "G"]             # 定番哀愁
+        ],
+        "chillhop": [
+            ["Fmaj7", "E7", "Am7", "Am7"],    # 哀愁ヒップホップ
+            ["Dm7", "G7", "Cmaj7", "Fmaj7"]   # スムース解決サビ
+        ],
+        "triphop": [
+            ["Am", "Dm", "Fmaj7", "Bbmaj7"],  # 絶望と叙情の狭間
+            ["Fmaj7", "E7", "Am7", "Am7"]     # ダーク解決サビ
         ]
     }
     
-    style_mapped = style.lower() if style.lower() in ("pop", "jazz", "rock", "ambient", "edm", "trance") else "pop"
+    style_mapped = style.lower() if style.lower() in ("pop", "jazz", "rock", "ambient", "edm", "trance", "chillhop", "triphop") else "pop"
     if style.lower() == "lofi":
         style_mapped = "jazz"
         
@@ -353,7 +386,9 @@ PROGRESSION_MAP = {
     "fifths": (["Am", "Dm", "G", "C"], ["Dm", "G", "C", "Am"]),
     "dorian_rock": (["Am", "C", "D", "F"], ["Am", "G", "F", "G"]),
     "edm_loop": (["Am", "F", "C", "G"], ["Fmaj7", "Am7", "G", "C"]), # EDM風ループ
-    "trance_epic": (["Am", "F", "C", "G"], ["F", "G", "Am", "Em"]) # エピックトランス風
+    "trance_epic": (["Am", "F", "C", "G"], ["F", "G", "Am", "Em"]), # エピックトランス風
+    "jazzy_hop": (["Fmaj7", "E7", "Am7", "Gm7", "C7"], ["Dm7", "G7", "Cmaj7", "A7"]), # Nujabes風ジャズヒップホップ
+    "triphop_dark": (["Am", "Fmaj7", "Dm7", "E7"], ["Am7", "Dm7", "Fmaj7", "Bbmaj7"]) # トリップホップ風ダーク進行
 }
 
 def expand_chord_plan_to_midi(plan: Dict[str, Any], duration_minutes: float) -> MidiComposition:
@@ -369,9 +404,13 @@ def expand_chord_plan_to_midi(plan: Dict[str, Any], duration_minutes: float) -> 
         if style == "lofi":
             style = "jazz"
             
-    # トランス / ドリームハウスの場合、テンポを138 BPM前後に強制設定
+    # トランス/チルホップ/トリップホップのテンポを強制設定
     if style in ("trance", "dream_house"):
         tempo_bpm = 138
+    elif style == "chillhop":
+        tempo_bpm = 85
+    elif style == "triphop":
+        tempo_bpm = 74
             
     instruments = plan.get("instruments", ["piano", "guitar", "bass", "drums"])
     
@@ -544,6 +583,29 @@ def expand_chord_plan_to_midi(plan: Dict[str, Any], duration_minutes: float) -> 
                     if (b + 1) % 4 == 0:
                         for h in [8, 10, 12, 13, 14, 15]:
                             track_notes["drums"].append(MidiNote(step=base_step + h, pitch=38, velocity=90, duration_steps=1))
+                elif style == "chillhop":
+                    # Nujabes風 Boom Bap ビート
+                    track_notes["drums"].append(MidiNote(step=base_step + 0, pitch=36, velocity=90, duration_steps=2))
+                    if b % 2 == 0:
+                        track_notes["drums"].append(MidiNote(step=base_step + 10, pitch=36, velocity=85, duration_steps=1))
+                    else:
+                        track_notes["drums"].append(MidiNote(step=base_step + 8, pitch=36, velocity=85, duration_steps=2))
+                        track_notes["drums"].append(MidiNote(step=base_step + 11, pitch=36, velocity=80, duration_steps=1))
+                    track_notes["drums"].append(MidiNote(step=base_step + 4, pitch=38, velocity=85, duration_steps=2))
+                    track_notes["drums"].append(MidiNote(step=base_step + 12, pitch=38, velocity=85, duration_steps=2))
+                    for h in range(8):
+                        step_val = h * 2
+                        vel = 75 if h % 2 == 0 else 45
+                        track_notes["drums"].append(MidiNote(step=base_step + step_val, pitch=42, velocity=vel, duration_steps=1))
+                elif style == "triphop":
+                    # Trip Hop 重厚・スロウビート
+                    track_notes["drums"].append(MidiNote(step=base_step + 0, pitch=36, velocity=95, duration_steps=2))
+                    if b % 2 == 1:
+                        track_notes["drums"].append(MidiNote(step=base_step + 10, pitch=36, velocity=85, duration_steps=2))
+                    track_notes["drums"].append(MidiNote(step=base_step + 4, pitch=38, velocity=95, duration_steps=2))
+                    track_notes["drums"].append(MidiNote(step=base_step + 12, pitch=38, velocity=95, duration_steps=2))
+                    for h in [0, 4, 8, 12]:
+                        track_notes["drums"].append(MidiNote(step=base_step + h, pitch=42, velocity=60, duration_steps=1))
                 elif intensity == "low" and sec["name"] in ("intro", "outro"):
                     # イントロやアウトロはドラムなし、または非常に薄いハイハットのみ
                     if b % 2 == 0:
@@ -598,8 +660,8 @@ def expand_chord_plan_to_midi(plan: Dict[str, Any], duration_minutes: float) -> 
         ))
         
     if "guitar" in instruments and track_notes["guitar"]:
-        inst_name = "synth_pad" if style in ("edm", "trance") else "acoustic_guitar"
-        track_name = "Synth Pad" if style in ("edm", "trance") else "Acoustic Guitar"
+        inst_name = "synth_pad" if style in ("edm", "trance", "triphop") else "acoustic_guitar"
+        track_name = "Synth Pad" if style in ("edm", "trance", "triphop") else "Acoustic Guitar"
         tracks.append(MidiTrack(
             track_id="track_guitar",
             track_name=track_name,
@@ -609,8 +671,8 @@ def expand_chord_plan_to_midi(plan: Dict[str, Any], duration_minutes: float) -> 
         ))
         
     if "bass" in instruments and track_notes["bass"]:
-        inst_name = "synth_bass" if style in ("edm", "trance") else "electric_bass"
-        track_name = "Synth Bass" if style in ("edm", "trance") else "Electric Bass"
+        inst_name = "synth_bass" if style in ("edm", "trance", "triphop") else "electric_bass"
+        track_name = "Synth Bass" if style in ("edm", "trance", "triphop") else "Electric Bass"
         tracks.append(MidiTrack(
             track_id="track_bass",
             track_name=track_name,
