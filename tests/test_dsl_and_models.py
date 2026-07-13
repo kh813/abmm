@@ -68,6 +68,19 @@ def test_dsl_midi_generation():
     assert "track_guitar" in track_ids
     assert "track_bass" not in track_ids
 
+def test_local_song_database_matching():
+    client = MagicMock()
+    composition = generate_midi_json(
+        client=client,
+        description="Arrange Oasis's Live Forever in EDM style",
+        tempo_bpm=120,
+        key_mode="major",
+        duration_minutes=1.0,
+        genre="edm"
+    )
+    client.generate.assert_not_called()
+    assert composition.tempo_bpm == 120
+
 def test_detect_hardware_spec_llms():
     specs = detect_hardware_spec()
     assert "recommended_llm_models" in specs

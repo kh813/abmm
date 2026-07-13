@@ -7,14 +7,20 @@ from app.composer.midi_schema import MidiComposition, MidiTrack, MidiNote, MidiS
 SYSTEM_PROMPT = """You are a high-level music composition assistant. Your job is to convert natural language descriptions and slider-based music parameters into a high-level Chord Plan JSON object.
 You must output ONLY a valid JSON object matching the JSON schema, without any Markdown decoration, wrap-up text, or comments.
 
+If the user specifies a famous song, artist (e.g. "Oasis の Live forever", "Michael Jackson", "Beatles"), or a specific vibe/mood (e.g. "朝の曲", "Billie Jean"), you MUST generate the appropriate chords matching that request inside the "custom_chords" object with "verse" and "chorus" keys containing lists of chord strings.
+
 JSON Schema format:
 {
-  "tempo_bpm": int (60-120),
+  "tempo_bpm": int (50-150),
   "key_mode": "major" | "minor",
-  "style": "lofi" | "jazz" | "pop" | "ambient" | "rock",
+  "style": "lofi" | "jazz" | "pop" | "ambient" | "rock" | "edm" | "trance" | "chillhop" | "triphop",
   "instruments": ["piano", "guitar", "bass", "drums"],
   "melody_style": "steady" | "expressive" | "complex",
-  "rhythm_variation": "none" | "slight" | "heavy"
+  "rhythm_variation": "none" | "slight" | "heavy",
+  "custom_chords": {
+    "verse": ["C", "G", "Am", "F"],
+    "chorus": ["F", "G", "Em", "Am"]
+  }
 }
 """
 
@@ -30,6 +36,23 @@ Output:
   "instruments": ["piano", "guitar", "bass"],
   "melody_style": "expressive",
   "rhythm_variation": "slight"
+}
+
+[Example 2]
+Input Description: "Oasis の Live forever をEDM風にアレンジして"
+Parameters: Tempo: 120 BPM, Key: Major, Duration: 1.5 minutes
+Output:
+{
+  "tempo_bpm": 120,
+  "key_mode": "major",
+  "style": "edm",
+  "instruments": ["piano", "guitar", "bass", "drums"],
+  "melody_style": "complex",
+  "rhythm_variation": "heavy",
+  "custom_chords": {
+    "verse": ["G", "D", "Am", "C", "D"],
+    "chorus": ["Em", "D", "C", "D"]
+  }
 }
 """
 
@@ -111,6 +134,84 @@ Please generate a corresponding JSON output.
 {FEW_SHOT_EXAMPLES}
 """
     return prompt
+
+LOCAL_SONG_DATABASE = [
+    {
+        "keywords": ["live forever", "liveforever"],
+        "style": "rock",
+        "custom_chords": {
+            "verse": ["G", "D", "Am", "C", "D"],
+            "chorus": ["Em", "D", "C", "D"]
+        }
+    },
+    {
+        "keywords": ["wonderwall"],
+        "style": "rock",
+        "custom_chords": {
+            "verse": ["Em7", "G", "Dsus4", "A7sus4"],
+            "chorus": ["C", "D", "Em7", "G"]
+        }
+    },
+    {
+        "keywords": ["don't look back in anger", "dont look back in anger"],
+        "style": "rock",
+        "custom_chords": {
+            "verse": ["C", "G", "Am", "E7", "F", "G", "C", "G"],
+            "chorus": ["F", "Fm", "C", "F", "Fm", "C"]
+        }
+    },
+    {
+        "keywords": ["billie jean", "billiejean", "michael jackson", "マイケル", "jackson"],
+        "style": "pop",
+        "custom_chords": {
+            "verse": ["F#m", "Bm7", "F#m", "Bm7"],
+            "chorus": ["D", "C#m", "D", "C#m"]
+        }
+    },
+    {
+        "keywords": ["yesterday"],
+        "style": "pop",
+        "custom_chords": {
+            "verse": ["F", "Em7", "A7", "Dm", "Bb", "C7", "F"],
+            "chorus": ["Dm", "G7", "Bb", "F"]
+        }
+    },
+    {
+        "keywords": ["let it be", "letitbe"],
+        "style": "pop",
+        "custom_chords": {
+            "verse": ["C", "G", "Am", "F", "C", "G", "F", "C"],
+            "chorus": ["Am", "G", "F", "C", "G", "F", "C"]
+        }
+    },
+    {
+        "keywords": ["wake me up", "wakemeup", "avicii", "アヴィーチー"],
+        "style": "edm",
+        "custom_chords": {
+            "verse": ["Am", "F", "C", "G"],
+            "chorus": ["Am", "F", "C", "G"]
+        }
+    },
+    {
+        "keywords": ["朝の曲", "朝の光", "朝", "canon", "カノン", "morning"],
+        "style": "ambient",
+        "custom_chords": {
+            "verse": ["C", "G", "Am", "Em", "F", "C", "F", "G"],
+            "chorus": ["C", "G", "Am", "Em", "F", "C", "F", "G"]
+        }
+    }
+]
+
+def check_local_song_database(description: str) -> Optional[Dict[str, Any]]:
+    desc_lower = description.lower()
+    for entry in LOCAL_SONG_DATABASE:
+        for kw in entry["keywords"]:
+            if kw in desc_lower:
+                return {
+                    "style": entry["style"],
+                    "custom_chords": entry["custom_chords"]
+                }
+    return None
 
 def get_song_structure(total_bars_needed: int, key_mode: str, style: str, custom_chords_tuple: Optional[tuple] = None) -> List[Dict[str, Any]]:
     """音楽理論的セオリーに基づき、イントロ、サビ、Aメロ、Bメロ、アウトロの曲構成とコード進行を構築する"""
@@ -306,34 +407,34 @@ def get_song_structure(total_bars_needed: int, key_mode: str, style: str, custom
     if custom_chords_tuple:
         verse_chords, chorus_chords = custom_chords_tuple
     else:
-        # マンネリ打破のための動的・ランダムなコード進行生成アルゴリズム (確率 40%)
+        # マンネリ打破のための動的・ランダムなコード進行生成アルゴリズム (確率 85%)
         # これにより、固定パターン以外の無数の音楽的に正しい進行が生まれ続けます
-        if random.random() < 0.40:
+        if random.random() < 0.85:
             if key_mode == "minor":
                 # マイナーキーの機能的和声進行 (i -> bVI -> iv/bVII -> v/V)
-                v_start = random.choice(["Am", "F"])
-                v2 = random.choice(["F", "Dm", "G"])
-                v3 = random.choice(["G", "C", "Em"])
-                v4 = random.choice(["Em", "Am"])
+                v_start = random.choice(["Am", "F", "Dm", "C"])
+                v2 = random.choice(["F", "Dm", "G", "Am", "Bb"])
+                v3 = random.choice(["G", "C", "Em", "Fmaj7", "Dm7"])
+                v4 = random.choice(["Em", "Am", "E7", "G", "C"])
                 verse_chords = [v_start, v2, v3, v4]
                 
-                c_start = random.choice(["F", "Dm"])
-                c2 = random.choice(["G", "Em"])
-                c3 = random.choice(["Am", "F"])
-                c4 = random.choice(["G", "Am"])
+                c_start = random.choice(["F", "Dm", "Fmaj7", "Bb"])
+                c2 = random.choice(["G", "Em", "C", "E7"])
+                c3 = random.choice(["Am", "F", "Dm", "C"])
+                c4 = random.choice(["G", "Am", "Em", "F"])
                 chorus_chords = [c_start, c2, c3, c4]
             else:
                 # メジャーキーの機能的和声進行 (I -> IV -> V/vii -> vi/iii)
-                v_start = random.choice(["C", "Am", "F"])
-                v2 = random.choice(["F", "Dm", "G"])
-                v3 = random.choice(["G", "Em", "C"])
-                v4 = random.choice(["Am", "F", "G"])
+                v_start = random.choice(["C", "Am", "F", "Cmaj7"])
+                v2 = random.choice(["F", "Dm", "G", "Am7"])
+                v3 = random.choice(["G", "Em", "C", "G7", "Dm7"])
+                v4 = random.choice(["Am", "F", "G", "C", "Em"])
                 verse_chords = [v_start, v2, v3, v4]
                 
-                c_start = random.choice(["F", "Dm", "C"])
-                c2 = random.choice(["G", "Em"])
-                c3 = random.choice(["Am", "F"])
-                c4 = random.choice(["G", "C"])
+                c_start = random.choice(["F", "Dm", "C", "Fmaj7"])
+                c2 = random.choice(["G", "Em", "Am", "D7"])
+                c3 = random.choice(["Am", "F", "C", "Dm7"])
+                c4 = random.choice(["G", "C", "Am", "F"])
                 chorus_chords = [c_start, c2, c3, c4]
         else:
             # 60% の確率はプールから定番進行を選択
@@ -481,25 +582,35 @@ def expand_chord_plan_to_midi(plan: Dict[str, Any], duration_minutes: float) -> 
     # カスタムDSL進行指定のチェック
     custom_chords = plan.get("custom_chords")
     if custom_chords:
-        custom_bars = plan.get("custom_bars") or len(custom_chords)
-        key_offset = 0 # DSL指定時は転調を行わない
+        if isinstance(custom_chords, dict):
+            # LLM / データベース形式 {"verse": [...], "chorus": [...]}
+            verse_chords = custom_chords.get("verse") or ["C"]
+            chorus_chords = custom_chords.get("chorus") or ["C"]
+        else:
+            # フラットリスト (DSL形式)
+            verse_chords = custom_chords
+            chorus_chords = custom_chords
+            
+        key_offset = 0 # 指定時は転調を行わない
         
         sections = []
         current_bar = 0
         while current_bar < total_bars_needed:
             remaining_bars = total_bars_needed - current_bar
-            section_bars = min(custom_bars, remaining_bars)
+            
+            name = "verse" if (current_bar // 8) % 2 == 0 else "chorus"
+            section_bars = min(8, remaining_bars)
             if section_bars <= 0:
                 break
                 
-            name = "verse" if (current_bar // custom_bars) % 2 == 0 else "chorus"
+            chords_to_use = verse_chords if name == "verse" else chorus_chords
             intensity = "low" if name == "verse" else "high"
             
             sections.append({
                 "name": name,
                 "start_bar": current_bar,
                 "bars": section_bars,
-                "chords": custom_chords,
+                "chords": chords_to_use,
                 "intensity": intensity,
                 "key_offset": key_offset
             })
@@ -930,7 +1041,27 @@ def generate_midi_json(
     """
     Ollama経由でLLMに高次のコード構成案を生成させ、それをPython側で展開して完全なMidiCompositionを構築する。
     """
-    # 1. DSL構文のチェックとバイパス
+    # 1. ローカルデータベースおよびDSL構文のチェックとバイパス
+    local_match = check_local_song_database(description)
+    if local_match:
+        print(f"[Database Composer] Famous song/style matched: {local_match}")
+        inst_list = ["piano", "guitar", "bass", "drums"]
+        if instruments:
+            inst_list = [k for k, v in instruments.items() if v > 0.0]
+            if not inst_list:
+                inst_list = ["piano"]
+                
+        plan = {
+            "tempo_bpm": tempo_bpm,
+            "key_mode": key_mode,
+            "style": local_match.get("style", "lofi"),
+            "instruments": inst_list,
+            "custom_chords": local_match["custom_chords"],
+            "genre": genre,
+            "chord_progression": chord_progression
+        }
+        return expand_chord_plan_to_midi(plan, duration_minutes)
+
     dsl_plan = parse_dsl_description(description)
     if dsl_plan:
         print(f"[DSL Composer] Custom chord progression detected: {dsl_plan}")
