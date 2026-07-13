@@ -114,7 +114,8 @@ def test_webview_api_preset_handlers(temp_presets_dir, tmp_path):
     assert load_res["status"] == "success"
     assert load_res["name"] == "Test Preset"
     assert len(load_res["tracks"]) == 0
-    assert load_res["audio_url"] == "temp_preview.wav"
+    assert load_res["audio_url"].startswith("temp_preview")
+    assert load_res["audio_url"].endswith(".wav")
     assert os.path.exists(api.preview_wav_path) # 即座に生成されたWAVファイルが存在すること
 
     # 削除

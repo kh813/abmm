@@ -72,6 +72,27 @@ class WebviewApi:
         # バックグラウンドでオンラインモデル設定ファイルを更新
         threading.Thread(target=self.model_manager.update_config_online, daemon=True).start()
 
+    def _get_dynamic_preview_path(self) -> tuple[str, str]:
+        """
+        古い temp_preview_*.wav ファイルをクリーンアップし、
+        キャッシュ回避のためのユニークな新しいWAVファイル名と絶対パスを返す。
+        """
+        import time
+        try:
+            for f in os.listdir(self.frontend_dir):
+                if f.startswith("temp_preview_") and f.endswith(".wav"):
+                    try:
+                        os.remove(os.path.join(self.frontend_dir, f))
+                    except Exception:
+                        pass
+        except Exception as e:
+            print(f"[handlers] Failed to clean up temp files: {e}")
+            
+        filename = f"temp_preview_{int(time.time() * 1000)}.wav"
+        full_path = os.path.join(self.frontend_dir, filename)
+        self.preview_wav_path = full_path
+        return filename, full_path
+
     def set_window(self, window):
         """pywebviewのウィンドウインスタンスを紐づける"""
         self.window = window
@@ -218,7 +239,8 @@ class WebviewApi:
                 "progress_callback": render_progress_cb
             }
 
-            self.neural_renderer.render(midi_bytes, self.preview_wav_path, render_params)
+            audio_filename, preview_wav_path = self._get_dynamic_preview_path()
+            self.neural_renderer.render(midi_bytes, preview_wav_path, render_params)
             
             # 4. 完了データの準備と通知
             tracks_info = []
@@ -236,7 +258,7 @@ class WebviewApi:
                 "key_mode": composition.key_mode,
                 "duration_minutes": composition.duration_minutes,
                 "tracks": tracks_info,
-                "audio_url": "temp_preview.wav"
+                "audio_url": audio_filename
             }
             
             if self.window:
@@ -281,7 +303,8 @@ class WebviewApi:
             )
             self.last_composition = composition
             midi_bytes = json_to_midi(composition)
-            self.lite_renderer.render(midi_bytes, self.preview_wav_path)
+            audio_filename, preview_wav_path = self._get_dynamic_preview_path()
+            self.lite_renderer.render(midi_bytes, preview_wav_path)
             
             tracks_info = []
             for track in composition.tracks:
@@ -298,7 +321,7 @@ class WebviewApi:
                 "key_mode": composition.key_mode,
                 "duration_minutes": composition.duration_minutes,
                 "tracks": tracks_info,
-                "audio_url": "temp_preview.wav"
+                "audio_url": audio_filename
             }
         except Exception as e:
             return {"status": "error", "message": str(e)}
@@ -330,11 +353,13 @@ class WebviewApi:
             # メモリ内の last_composition を上書きして、Phase 1をスキップできるようにする
             comp_data = data.get("composition")
             tracks_info = []
+            audio_filename = "temp_preview.wav"
             if comp_data:
                 self.last_composition = MidiComposition(**comp_data)
                 # プレビュー音声を即座に生成
                 midi_bytes = json_to_midi(self.last_composition)
-                self.lite_renderer.render(midi_bytes, self.preview_wav_path)
+                audio_filename, preview_wav_path = self._get_dynamic_preview_path()
+                self.lite_renderer.render(midi_bytes, preview_wav_path)
                 
                 for track in self.last_composition.tracks:
                     tracks_info.append({
@@ -349,7 +374,7 @@ class WebviewApi:
                 "name": data.get("name"),
                 "params": data.get("params"),
                 "tracks": tracks_info,
-                "audio_url": "temp_preview.wav"
+                "audio_url": audio_filename
             }
         except Exception as e:
             return {"status": "error", "message": str(e)}
@@ -713,21 +738,22 @@ class WebviewApi:
                     "notes_count": len(track.notes)
                 })
                 
+            audio_filename = "temp_preview.wav"
+            try:
+                midi_bin = json_to_midi(composition)
+                audio_filename, preview_wav_path = self._get_dynamic_preview_path()
+                self.lite_renderer.render(midi_bin, preview_wav_path)
+            except Exception as render_err:
+                print(f"[handlers] Failed to auto-render imported MIDI preview: {render_err}")
+
             result = {
                 "status": "success",
                 "tempo_bpm": composition.tempo_bpm,
                 "key_mode": composition.key_mode,
                 "duration_minutes": composition.duration_minutes,
                 "tracks": tracks_info,
-                "audio_url": "temp_preview.wav"
+                "audio_url": audio_filename
             }
-            
-            try:
-                midi_bin = json_to_midi(composition)
-                self.lite_renderer.render(midi_bin, self.preview_wav_path)
-            except Exception as render_err:
-                print(f"[handlers] Failed to auto-render imported MIDI preview: {render_err}")
-                
             return result
         except Exception as e:
             return {"status": "error", "message": str(e)}
