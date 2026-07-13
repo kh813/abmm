@@ -306,12 +306,61 @@ def get_song_structure(total_bars_needed: int, key_mode: str, style: str, custom
     if custom_chords_tuple:
         verse_chords, chorus_chords = custom_chords_tuple
     else:
-        if key_mode == "minor":
-            verse_chords = random.choice(minor_verse_pools[style_mapped])
-            chorus_chords = random.choice(minor_chorus_pools[style_mapped])
+        # マンネリ打破のための動的・ランダムなコード進行生成アルゴリズム (確率 40%)
+        # これにより、固定パターン以外の無数の音楽的に正しい進行が生まれ続けます
+        if random.random() < 0.40:
+            if key_mode == "minor":
+                # マイナーキーの機能的和声進行 (i -> bVI -> iv/bVII -> v/V)
+                v_start = random.choice(["Am", "F"])
+                v2 = random.choice(["F", "Dm", "G"])
+                v3 = random.choice(["G", "C", "Em"])
+                v4 = random.choice(["Em", "Am"])
+                verse_chords = [v_start, v2, v3, v4]
+                
+                c_start = random.choice(["F", "Dm"])
+                c2 = random.choice(["G", "Em"])
+                c3 = random.choice(["Am", "F"])
+                c4 = random.choice(["G", "Am"])
+                chorus_chords = [c_start, c2, c3, c4]
+            else:
+                # メジャーキーの機能的和声進行 (I -> IV -> V/vii -> vi/iii)
+                v_start = random.choice(["C", "Am", "F"])
+                v2 = random.choice(["F", "Dm", "G"])
+                v3 = random.choice(["G", "Em", "C"])
+                v4 = random.choice(["Am", "F", "G"])
+                verse_chords = [v_start, v2, v3, v4]
+                
+                c_start = random.choice(["F", "Dm", "C"])
+                c2 = random.choice(["G", "Em"])
+                c3 = random.choice(["Am", "F"])
+                c4 = random.choice(["G", "C"])
+                chorus_chords = [c_start, c2, c3, c4]
         else:
-            verse_chords = random.choice(major_verse_pools[style_mapped])
-            chorus_chords = random.choice(major_chorus_pools[style_mapped])
+            # 60% の確率はプールから定番進行を選択
+            if key_mode == "minor":
+                verse_chords = random.choice(minor_verse_pools[style_mapped])
+                chorus_chords = random.choice(minor_chorus_pools[style_mapped])
+            else:
+                verse_chords = random.choice(major_verse_pools[style_mapped])
+                chorus_chords = random.choice(major_chorus_pools[style_mapped])
+
+        # コード進行のミューテーション（突然変異）(確率 30%)
+        # トライアド（3和音）をランダムにセブンスコード（7th）やサスフォー（sus4）などにアップグレードして響きを豊かにする
+        if random.random() < 0.30:
+            def mutate_chord(c: str) -> str:
+                if len(c) > 2 and any(suffix in c for suffix in ("maj7", "m7", "sus4", "7", "9")):
+                    return c
+                # セブンスコードへのアップグレード
+                if c.endswith("m"):
+                    return c + "7" if random.random() < 0.5 else c
+                elif c in ("C", "F", "G", "D", "A", "E"):
+                    if c == "G":
+                        return "G7" if random.random() < 0.5 else c
+                    return c + "maj7" if random.random() < 0.5 else c
+                return c
+
+            verse_chords = [mutate_chord(c) for c in verse_chords]
+            chorus_chords = [mutate_chord(c) for c in chorus_chords]
 
     # Bメロ（Bridge）用コード進行：サビへの緊張感を高める進行（サブドミナントから開始など）
     bridge_chords = [verse_chords[2], verse_chords[3], chorus_chords[0], chorus_chords[1]]

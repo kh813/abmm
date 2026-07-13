@@ -77,8 +77,8 @@ class OllamaClient:
             "prompt": prompt,
             "stream": False,
             "options": {
-                "temperature": 0.3, # 決定論的で構造化データに向いた低めの温度
-            }
+            "temperature": 0.7, # 創造性を引き上げ、多様な進行を引き出す温度設定
+        }
         }
         if system_prompt:
             payload["system"] = system_prompt
