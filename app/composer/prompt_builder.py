@@ -279,11 +279,33 @@ def check_local_song_database(description: str) -> Optional[Dict[str, Any]]:
 
 def extract_song_query(description: str) -> Optional[str]:
     """指示テキストから曲名/アーティスト検索用のクエリをクレンジング抽出する"""
+    # 1. 括弧や引用符（「」『』"" ''）で囲まれた部分があれば、それを曲名候補として最優先で抽出
+    for q in [r'「([^」]+)」', r'『([^』]+)』', r'\"([^\"]+)\"', r'\'([^\']+)\'']:
+        m = re.search(q, description)
+        if m:
+            val = m.group(1).strip()
+            if len(val) > 1:
+                return val
+
+    # 2. English の English パターン (例: BeatlesのYellow submarine)
+    m_eng = re.search(r'([a-zA-Z0-9\s\'\-]{2,})の([a-zA-Z0-9\s\'\-]{2,})', description)
+    if m_eng:
+        return f"{m_eng.group(1).strip()} {m_eng.group(2).strip()}"
+
+    # 3. アルファベット・数字の単語を抽出し、指示語やジャンル名などのノイズを除去して結合
+    words = re.findall(r'[a-zA-Z0-9\-\']+', description)
+    noise_genres_instructions = {
+        'avici', 'avicii', 'edm', 'trance', 'lofi', 'jazz', 'rock', 'pop', 'ambient', 'chillhop',
+        'triphop', 'synthwave', 'folk', 'metal', 'funk', 'reggae', 'techno', 'house', 'classical',
+        'rnb', 'cover', 'arrange', 'play', 'compose', 'make', 'create', 'style', 'song', 'music', 'bgm'
+    }
+    filtered = [w for w in words if w.lower() not in noise_genres_instructions]
+    if len(filtered) >= 2:
+        return ' '.join(filtered)
+
+    # 4. フォールバック: 元のクリーニング処理
     cleaned = description
-    
-    # 英語の指示ワードを大文字小文字問わず除去
     cleaned = re.sub(r'(?i)\b(arrange|play|compose|make|create|cover|rendering|render)\b', '', cleaned)
-    
     noise_patterns = [
         r'を?.*風に?(アレンジ|作曲|演奏|再生|カバー)?して?',
         r'の曲',
@@ -297,7 +319,6 @@ def extract_song_query(description: str) -> Optional[str]:
         cleaned = re.sub(pattern, '', cleaned)
         
     cleaned = cleaned.replace("の", " ").replace("by", " ").strip()
-    # 余分な空白のクリーンアップ
     cleaned = re.sub(r'\s+', ' ', cleaned).strip()
     
     if len(cleaned) > 2:
@@ -319,44 +340,52 @@ def search_chords_online(song_query: str) -> Optional[List[str]]:
         with urllib.request.urlopen(req, timeout=8) as response:
             html = response.read().decode("utf-8", errors="ignore")
             
-        redirect_urls = re.findall(r'uddg=([^&"]+)', html)
+        redirect_urls = re.findall(r'uddg=([^&"#]+)', html)
         decoded_urls = []
         for u in redirect_urls:
             decoded_urls.append(urllib.parse.unquote(u))
             
-        target_url = None
+        # 候補となるURLをフィルタリングして収集（最大6個まで試す）
+        candidate_urls = []
         for u in decoded_urls:
             u_lower = u.lower()
             if "ultimate-guitar.com" in u_lower:
-                continue # Ultimate Guitarはクローラー規制が厳しいため避ける
-            if any(domain in u_lower for domain in ["chord", "tab", "songsterr", "guitar", "music"]):
-                target_url = u
-                break
+                continue # クローラー規制のあるサイトはスキップ
+            if any(domain in u_lower for domain in ["chord", "tab", "songsterr", "guitar", "music", "tabs"]):
+                candidate_urls.append(u)
                 
-        if not target_url and decoded_urls:
-            target_url = decoded_urls[0]
-            
-        if not target_url:
-            print("[Online Chord Search] No results found.")
+        # バックアップとして、上位3つのURLも追加しておく
+        for u in decoded_urls[:3]:
+            if u not in candidate_urls and "ultimate-guitar.com" not in u and "y.js" not in u:
+                candidate_urls.append(u)
+                
+        if not candidate_urls:
+            print("[Online Chord Search] No search results found.")
             return None
             
-        print(f"[Online Chord Search] Fetching chords page: {target_url}")
-        req_page = urllib.request.Request(target_url, headers=headers)
-        with urllib.request.urlopen(req_page, timeout=8) as response_page:
-            page_html = response_page.read().decode("utf-8", errors="ignore")
-            
-        clean_text = re.sub(r'<script.*?</script>', '', page_html, flags=re.DOTALL)
-        clean_text = re.sub(r'<style.*?</style>', '', clean_text, flags=re.DOTALL)
-        clean_text = re.sub(r'<[^>]+>', ' ', clean_text)
-        
-        extracted = extract_chords_from_raw_tab(clean_text)
-        if len(extracted) >= 4:
-            print(f"[Online Chord Search] Successfully extracted {len(extracted)} chords: {extracted[:12]}...")
-            return extracted
-            
-        print("[Online Chord Search] Insufficient chords extracted from page.")
+        # 各候補URLから順にコード抽出を試みるループ
+        for target_url in candidate_urls[:6]:
+            print(f"[Online Chord Search] Trying chords page: {target_url}")
+            try:
+                req_page = urllib.request.Request(target_url, headers=headers)
+                with urllib.request.urlopen(req_page, timeout=8) as response_page:
+                    page_html = response_page.read().decode("utf-8", errors="ignore")
+                    
+                clean_text = re.sub(r'<script.*?</script>', '', page_html, flags=re.DOTALL)
+                clean_text = re.sub(r'<style.*?</style>', '', clean_text, flags=re.DOTALL)
+                clean_text = re.sub(r'<[^>]+>', ' ', clean_text)
+                
+                extracted = extract_chords_from_raw_tab(clean_text)
+                if len(extracted) >= 4:
+                    print(f"[Online Chord Search] Successfully extracted {len(extracted)} chords: {extracted[:12]}...")
+                    return extracted
+                print(f"[Online Chord Search] Extracted only {len(extracted)} chords, skipping page.")
+            except Exception as page_err:
+                print(f"[Online Chord Search] Failed to fetch/parse {target_url}: {page_err}")
+                
+        print("[Online Chord Search] All candidate URLs failed to yield valid chords.")
     except Exception as e:
-        print(f"[Online Chord Search] Failed: {e}")
+        print(f"[Online Chord Search] Search failed: {e}")
         
     return None
 
