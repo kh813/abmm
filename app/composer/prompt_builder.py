@@ -371,9 +371,16 @@ def search_chords_online(song_query: str) -> Optional[List[str]]:
                 with urllib.request.urlopen(req_page, timeout=8) as response_page:
                     page_html = response_page.read().decode("utf-8", errors="ignore")
                     
+                # メタ記述(description)からコード進行が抽出できる場合が多いため、退避させて結合する
+                meta_desc = re.search(r'<meta[^>]*name=["\']description["\'][^>]*content=["\']([^"\']+)["\']', page_html, flags=re.IGNORECASE)
+                meta_text = meta_desc.group(1) if meta_desc else ""
+                
                 clean_text = re.sub(r'<script.*?</script>', '', page_html, flags=re.DOTALL)
                 clean_text = re.sub(r'<style.*?</style>', '', clean_text, flags=re.DOTALL)
                 clean_text = re.sub(r'<[^>]+>', ' ', clean_text)
+                
+                # メタテキストを先頭にマージ
+                clean_text = meta_text + "\n" + clean_text
                 
                 extracted = extract_chords_from_raw_tab(clean_text)
                 if len(extracted) >= 4:
@@ -1175,7 +1182,7 @@ def extract_chords_from_raw_tab(text: str) -> list[str]:
                 
         # トークンの大半がコード、あるいは特定のセクション指示行の場合にコード行とみなす
         # (通常の文章にコードらしき単語が1〜2個混ざる誤検出を防ぐため閾値をやや厳しくする)
-        if chord_count >= 2 and chord_count / len(tokens) >= 0.6:
+        if chord_count >= 2 and chord_count / len(tokens) >= 0.3:
             found_chords.extend(line_chords)
             
     return found_chords
