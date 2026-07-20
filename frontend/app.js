@@ -4,6 +4,24 @@ document.addEventListener("DOMContentLoaded", () => {
   const genreSelect = document.getElementById("genre-select");
   const progressionSelect = document.getElementById("progression-select");
   
+  // Object URLを用いたWKWebViewの音声キャッシュ完全回避再生ヘルパー
+  async function playAudioBypassingCache(audio_url) {
+    try {
+      const fetchUrl = audio_url + `?t=${Date.now()}`;
+      const audioResponse = await fetch(fetchUrl, { cache: "no-store" });
+      const blob = await audioResponse.blob();
+      const objectURL = URL.createObjectURL(blob);
+      audioPreview.src = objectURL;
+      audioPreview.load();
+      await audioPreview.play();
+    } catch (e) {
+      console.error("Failed to load audio via Blob fetch, falling back to direct URL:", e);
+      audioPreview.src = audio_url + `?t=${Date.now()}`;
+      audioPreview.load();
+      audioPreview.play().catch(err => console.log("Fallback play failed:", err));
+    }
+  }
+
   // Ollama status elements
   const ollamaIndicator = document.getElementById("ollama-indicator");
   const ollamaStatusText = document.getElementById("ollama-status-text");
@@ -267,10 +285,7 @@ document.addEventListener("DOMContentLoaded", () => {
         tracksList.appendChild(li);
       });
 
-      const cacheBuster = `?t=${Date.now()}`;
-      audioPreview.src = response.audio_url + cacheBuster;
-      audioPreview.load();
-      audioPreview.play().catch(e => console.log("Autoplay prevented:", e));
+      playAudioBypassingCache(response.audio_url);
     } else {
       alert(`生成失敗: ${response.message}`);
     }
@@ -502,10 +517,7 @@ document.addEventListener("DOMContentLoaded", () => {
         });
 
         // プレビュー音声のロードと再生
-        const cacheBuster = `?t=${Date.now()}`;
-        audioPreview.src = response.audio_url + cacheBuster;
-        audioPreview.load();
-        audioPreview.play().catch(e => console.log("Autoplay prevented:", e));
+        playAudioBypassingCache(response.audio_url);
 
         if (exportCard) {
           exportCard.classList.remove("hidden");
@@ -985,10 +997,7 @@ document.addEventListener("DOMContentLoaded", () => {
             tracksList.appendChild(li);
           });
           
-          const cacheBuster = `?t=${Date.now()}`;
-          audioPreview.src = response.audio_url + cacheBuster;
-          audioPreview.load();
-          audioPreview.play().catch(e => console.log("Autoplay prevented:", e));
+          playAudioBypassingCache(response.audio_url);
           
           alert("MIDIファイルのインポートが完了しました。");
         } else {

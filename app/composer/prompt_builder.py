@@ -199,6 +199,70 @@ LOCAL_SONG_DATABASE = [
             "verse": ["C", "G", "Am", "Em", "F", "C", "F", "G"],
             "chorus": ["C", "G", "Am", "Em", "F", "C", "F", "G"]
         }
+    },
+    {
+        "keywords": ["hotel california", "hotelcalifornia"],
+        "style": "rock",
+        "custom_chords": {
+            "verse": ["Bm", "F#", "A", "E", "G", "D", "Em", "F#"],
+            "chorus": ["G", "D", "F#", "Bm", "G", "D", "Em", "F#"]
+        }
+    },
+    {
+        "keywords": ["imagine"],
+        "style": "pop",
+        "custom_chords": {
+            "verse": ["C", "Cmaj7", "F", "C", "Cmaj7", "F"],
+            "chorus": ["F", "G", "C", "E7", "F", "G", "C"]
+        }
+    },
+    {
+        "keywords": ["hey jude", "heyjude"],
+        "style": "pop",
+        "custom_chords": {
+            "verse": ["F", "C", "C7", "F", "Bb", "F", "C7", "F"],
+            "chorus": ["F7", "Bb", "Gm7", "C7", "F"]
+        }
+    },
+    {
+        "keywords": ["viva la vida", "vivalavida"],
+        "style": "pop",
+        "custom_chords": {
+            "verse": ["C", "D", "G", "Em"],
+            "chorus": ["C", "D", "G", "Em"]
+        }
+    },
+    {
+        "keywords": ["smells like teen spirit", "smellsliketeenspirit", "nirvana"],
+        "style": "rock",
+        "custom_chords": {
+            "verse": ["Fm", "Bbm", "Ab", "Db"],
+            "chorus": ["Fm", "Bbm", "Ab", "Db"]
+        }
+    },
+    {
+        "keywords": ["creep", "radiohead"],
+        "style": "rock",
+        "custom_chords": {
+            "verse": ["G", "B", "C", "Cm"],
+            "chorus": ["G", "B", "C", "Cm"]
+        }
+    },
+    {
+        "keywords": ["残酷な天使のテーゼ", "残酷な天使", "cruel angel"],
+        "style": "pop",
+        "custom_chords": {
+            "verse": ["Em", "Am", "Bm", "Em"],
+            "chorus": ["C", "D", "Bm", "Em", "Am", "D", "G"]
+        }
+    },
+    {
+        "keywords": ["丸の内サディスティック", "丸の内", "marunouchi"],
+        "style": "jazz",
+        "custom_chords": {
+            "verse": ["Abmaj7", "G7", "Cm7", "Ebm7", "Abmaj7", "G7", "Cm7"],
+            "chorus": ["Abmaj7", "G7", "Cm7", "Ebm7", "Abmaj7", "G7", "Cm7"]
+        }
     }
 ]
 
@@ -211,6 +275,89 @@ def check_local_song_database(description: str) -> Optional[Dict[str, Any]]:
                     "style": entry["style"],
                     "custom_chords": entry["custom_chords"]
                 }
+    return None
+
+def extract_song_query(description: str) -> Optional[str]:
+    """指示テキストから曲名/アーティスト検索用のクエリをクレンジング抽出する"""
+    cleaned = description
+    
+    # 英語の指示ワードを大文字小文字問わず除去
+    cleaned = re.sub(r'(?i)\b(arrange|play|compose|make|create|cover|rendering|render)\b', '', cleaned)
+    
+    noise_patterns = [
+        r'を?.*風に?(アレンジ|作曲|演奏|再生|カバー)?して?',
+        r'の曲',
+        r'風$',
+        r'風の曲',
+        r'スタイル',
+        r'っぽく',
+        r'っぽい'
+    ]
+    for pattern in noise_patterns:
+        cleaned = re.sub(pattern, '', cleaned)
+        
+    cleaned = cleaned.replace("の", " ").replace("by", " ").strip()
+    # 余分な空白のクリーンアップ
+    cleaned = re.sub(r'\s+', ' ', cleaned).strip()
+    
+    if len(cleaned) > 2:
+        return cleaned
+    return None
+
+def search_chords_online(song_query: str) -> Optional[List[str]]:
+    """インターネットを検索し、指示された曲のコード進行譜を自動で探し出す"""
+    import urllib.request
+    import urllib.parse
+    import re
+    
+    print(f"[Online Chord Search] Searching chords online for: {song_query}")
+    try:
+        headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36"}
+        search_url = f"https://html.duckduckgo.com/html/?q={urllib.parse.quote(song_query + ' chords')}"
+        req = urllib.request.Request(search_url, headers=headers)
+        
+        with urllib.request.urlopen(req, timeout=8) as response:
+            html = response.read().decode("utf-8", errors="ignore")
+            
+        redirect_urls = re.findall(r'uddg=([^&"]+)', html)
+        decoded_urls = []
+        for u in redirect_urls:
+            decoded_urls.append(urllib.parse.unquote(u))
+            
+        target_url = None
+        for u in decoded_urls:
+            u_lower = u.lower()
+            if "ultimate-guitar.com" in u_lower:
+                continue # Ultimate Guitarはクローラー規制が厳しいため避ける
+            if any(domain in u_lower for domain in ["chord", "tab", "songsterr", "guitar", "music"]):
+                target_url = u
+                break
+                
+        if not target_url and decoded_urls:
+            target_url = decoded_urls[0]
+            
+        if not target_url:
+            print("[Online Chord Search] No results found.")
+            return None
+            
+        print(f"[Online Chord Search] Fetching chords page: {target_url}")
+        req_page = urllib.request.Request(target_url, headers=headers)
+        with urllib.request.urlopen(req_page, timeout=8) as response_page:
+            page_html = response_page.read().decode("utf-8", errors="ignore")
+            
+        clean_text = re.sub(r'<script.*?</script>', '', page_html, flags=re.DOTALL)
+        clean_text = re.sub(r'<style.*?</style>', '', clean_text, flags=re.DOTALL)
+        clean_text = re.sub(r'<[^>]+>', ' ', clean_text)
+        
+        extracted = extract_chords_from_raw_tab(clean_text)
+        if len(extracted) >= 4:
+            print(f"[Online Chord Search] Successfully extracted {len(extracted)} chords: {extracted[:12]}...")
+            return extracted
+            
+        print("[Online Chord Search] Insufficient chords extracted from page.")
+    except Exception as e:
+        print(f"[Online Chord Search] Failed: {e}")
+        
     return None
 
 def get_song_structure(total_bars_needed: int, key_mode: str, style: str, custom_chords_tuple: Optional[tuple] = None) -> List[Dict[str, Any]]:
@@ -1112,7 +1259,52 @@ def generate_midi_json(
             "chord_progression": chord_progression
         }
         return expand_chord_plan_to_midi(plan, duration_minutes)
-
+    # 2. オンラインコード譜検索のチェックとバイパス
+    song_query = extract_song_query(description)
+    if song_query:
+        desc_lower = description.lower()
+        is_song_request = (
+            "by" in desc_lower or 
+            "の" in description or 
+            "song" in desc_lower or 
+            "曲" in description or 
+            "テーマ" in description or
+            "cover" in desc_lower or
+            any(q in description for q in ['"', "'", "「", "」", "『", "』"]) or
+            len([w for w in song_query.split() if w[0].isupper() and w.lower() not in {"a", "an", "the", "arrange", "play", "compose", "make", "create", "cover"}]) >= 2
+        )
+        generic_words = {"sad", "happy", "lofi", "ambient", "jazz", "rock", "pop", "edm", "trance", "chill", "dark", "fast", "slow", "piano", "guitar", "beat", "drums", "bass", "bgm", "music", "composition"}
+        query_words = set(song_query.lower().split())
+        if query_words.issubset(generic_words) or not song_query.strip():
+            is_song_request = False
+            
+        if is_song_request:
+            online_chords = search_chords_online(song_query)
+            if online_chords:
+                print(f"[Online Composer] Chords found online for '{song_query}': {online_chords[:12]}")
+                inst_list = ["piano", "guitar", "bass", "drums"]
+                if instruments:
+                    inst_list = [k for k, v in instruments.items() if v > 0.0]
+                    if not inst_list:
+                        inst_list = ["piano"]
+                
+                half = len(online_chords) // 2
+                verse_chords = online_chords[:half] if half >= 2 else online_chords
+                chorus_chords = online_chords[half:] if half >= 2 else online_chords
+                
+                plan = {
+                    "tempo_bpm": tempo_bpm,
+                    "key_mode": key_mode,
+                    "style": "pop",
+                    "instruments": inst_list,
+                    "custom_chords": {
+                        "verse": verse_chords,
+                        "chorus": chorus_chords
+                    },
+                    "genre": genre,
+                    "chord_progression": chord_progression
+                }
+                return expand_chord_plan_to_midi(plan, duration_minutes)
     prompt = build_prompt(
         description=description,
         tempo_bpm=tempo_bpm,

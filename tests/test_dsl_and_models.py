@@ -1,7 +1,7 @@
 import pytest
 from app.composer.prompt_builder import parse_dsl_description, generate_midi_json, expand_chord_plan_to_midi
 from app.render.hardware_detect import detect_hardware_spec, get_total_memory_gb
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 def test_parse_dsl_description():
     # Standard format
@@ -80,6 +80,22 @@ def test_local_song_database_matching():
     )
     client.generate.assert_not_called()
     assert composition.tempo_bpm == 120
+
+def test_online_song_chords_search_fallback():
+    client = MagicMock()
+    with patch("app.composer.prompt_builder.search_chords_online") as mock_search:
+        mock_search.return_value = ["C", "G", "Am", "F"]
+        composition = generate_midi_json(
+            client=client,
+            description="Arrange Adele's Someone Like You",
+            tempo_bpm=80,
+            key_mode="major",
+            duration_minutes=1.0,
+            genre="pop"
+        )
+        mock_search.assert_called_once_with("Adele's Someone Like You")
+        client.generate.assert_not_called()
+        assert composition.tempo_bpm == 80
 
 def test_detect_hardware_spec_llms():
     specs = detect_hardware_spec()
