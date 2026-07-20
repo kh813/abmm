@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css?v=6">
 </head>
 <body>
   <div class="app-container">
@@ -295,7 +295,7 @@
         </div>
 
         <!-- Phase 2 Audio Export Card -->
-        <div class="export-card hidden" id="export-card">
+        <div class="export-card" id="export-card" style="display: none;">
           <h3 class="sub-section-title">📦 本番音声の書き出し (Phase 2)</h3>
           
           <div class="export-settings">
@@ -335,6 +335,10 @@
           <button id="export-btn" class="primary-btn">
             <span class="btn-text">🚀 本番レンダリング＆書き出し</span>
           </button>
+          
+          <button id="garageband-btn" class="secondary-btn" style="margin-top: 10px; width: 100%;">
+            <span class="btn-text">🎹 GarageBandで開く (macOS)</span>
+          </button>
         </div>
       </section>
     </div>
@@ -367,6 +371,19 @@
         </section>
         
         <section class="settings-section-block">
+          <h3>🤖 LLM 接続設定 (Ollama / LM Studio)</h3>
+          <div class="input-group-row" style="margin-bottom: 12px;">
+            <label for="setting-llm-url" style="display: block; font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 4px;">API Base URL:</label>
+            <input type="text" id="setting-llm-url" placeholder="http://localhost:11434" style="width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #444; background: #222; color: #fff;">
+          </div>
+          <div class="input-group-row" style="margin-bottom: 12px;">
+            <label for="setting-llm-model" style="display: block; font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 4px;">モデル名:</label>
+            <input type="text" id="setting-llm-model" placeholder="llama3.2:3b" style="width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #444; background: #222; color: #fff;">
+          </div>
+          <p class="privacy-note" style="margin-top: 5px; font-size: 11px; color: #888;">※LM StudioなどのOpenAI互換サーバーを使用する場合は `http://localhost:1234/v1` 等を指定してください。</p>
+        </section>
+
+        <section class="settings-section-block">
           <h3>🔒 プライバシーと通信</h3>
           <div class="checkbox-group">
             <input type="checkbox" id="setting-auto-update" checked>
@@ -378,6 +395,6 @@
     </div>
   </div>
 
-  <script src="app.js"></script>
+  <script src="app.js?v=6"></script>
 </body>
 </html>

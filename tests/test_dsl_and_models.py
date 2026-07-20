@@ -64,9 +64,9 @@ def test_dsl_midi_generation():
     assert composition.tempo_bpm == 90
     # piano and guitar should be included, bass and drums skipped
     track_ids = [t.track_id for t in composition.tracks]
-    assert "track_piano" in track_ids
-    assert "track_guitar" in track_ids
-    assert "track_bass" not in track_ids
+    assert any(tid.startswith("track_piano") for tid in track_ids)
+    assert any(tid.startswith("track_guitar") for tid in track_ids)
+    assert not any(tid.startswith("track_bass") for tid in track_ids)
 
 def test_local_song_database_matching():
     client = MagicMock()
@@ -118,5 +118,30 @@ def test_genre_and_progression_overrides():
         chord_progression="royal_road"
     )
     assert len(composition.tracks) > 0
-    piano_track = next(t for t in composition.tracks if "piano" in t.track_name.lower())
+    piano_track = next(t for t in composition.tracks if t.track_id.startswith("track_piano"))
     assert len(piano_track.notes) > 0
+
+def test_bossanova_style_override_and_chords():
+    client = MagicMock()
+    composition = generate_midi_json(
+        client=client,
+        description="Wonderwall をボサノバ風にして",
+        tempo_bpm=120,
+        key_mode="major",
+        duration_minutes=1.0
+    )
+    assert composition.tempo_bpm == 120
+    
+    from app.composer.prompt_builder import get_chord_pitches
+    dsus4_pitches = get_chord_pitches("Dsus4")
+    assert dsus4_pitches == [62, 67, 69]
+    a7sus4_pitches = get_chord_pitches("A7sus4")
+    assert a7sus4_pitches == [69, 74, 76, 79]
+
+def test_key_transposition_parsing():
+    from app.composer.prompt_builder import parse_key_offset_from_description
+    assert parse_key_offset_from_description("キーを2上げて") == 2
+    assert parse_key_offset_from_description("key -3") == -3
+    assert parse_key_offset_from_description("キーをCにして") == 5
+
+

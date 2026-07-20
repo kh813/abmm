@@ -103,6 +103,7 @@ body {
   flex-direction: column;
   gap: 1.25rem;
   min-height: 0;
+  overflow-y: auto;
 }
 
 .panel-title {
@@ -1046,9 +1047,22 @@ audio {
   background-color: rgba(0, 0, 0, 0.04);
 }
 
+.status-panel {
+  overflow-y: auto;
+  padding-right: 0.5rem;
+}
 
+.status-panel::-webkit-scrollbar {
+  width: 6px;
+}
 
+.status-panel::-webkit-scrollbar-track {
+  background: transparent;
+}
 
-
+.status-panel::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.15);
+  border-radius: 9999px;
+}
 
 

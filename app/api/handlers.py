@@ -48,7 +48,20 @@ class WebviewApi:
     非同期レンダリング・キャンセル処理、スペック検出、モデル管理を仲介する。
     """
     def __init__(self):
-        self.llm_client = OllamaClient()
+        # 起動時の設定読み込み
+        base_url = "http://localhost:11434"
+        model = "llama3.2:3b"
+        settings_path = os.path.expanduser("~/Library/Application Support/ABMM/settings.json")
+        try:
+            if os.path.exists(settings_path):
+                with open(settings_path, "r", encoding="utf-8") as f:
+                    settings = json.load(f)
+                    base_url = settings.get("llm_base_url", base_url)
+                    model = settings.get("llm_model", model)
+        except Exception as e:
+            print(f"[handlers] Failed to load initial settings: {e}")
+
+        self.llm_client = OllamaClient(base_url=base_url, model=model)
         self.lite_renderer = LiteRenderer()
         self.model_manager = ModelManager()
         self.neural_renderer = NeuralRenderer(self.model_manager)
@@ -619,6 +632,54 @@ class WebviewApi:
         except Exception as e:
             print(f"[handlers] Failed to load settings: {e}")
         return {"auto_update_check": True}
+
+    def update_llm_client_config(self, base_url, model):
+        """JavaScriptからLLMクライアントの設定を動的に更新する"""
+        try:
+            self.llm_client.base_url = base_url.rstrip("/")
+            self.llm_client.model = model
+            print(f"[handlers] LLM Client configuration updated: URL={base_url}, Model={model}")
+            return {"status": "success"}
+        except Exception as e:
+            return {"status": "error", "message": str(e)}
+
+    def open_in_garageband(self):
+        """最後に生成されたMIDIデータを一時ファイルとして保存し、GarageBandで開く (macOS専用)"""
+        if not self.last_composition:
+            return {"status": "error", "message": "MIDIデータがありません。先に作曲を実行してください。"}
+            
+        import tempfile
+        import subprocess
+        import time
+        from app.composer.midi_converter import json_to_midi
+        
+        try:
+            # 一時ファイルとしてMIDIデータを保存
+            temp_dir = tempfile.gettempdir()
+            temp_midi_path = os.path.join(temp_dir, f"abmm_temp_{int(time.time())}.mid")
+            
+            midi_bytes = json_to_midi(self.last_composition)
+            with open(temp_midi_path, "wb") as f:
+                f.write(midi_bytes)
+                
+            # macOSの 'open -a GarageBand' を実行
+            result = subprocess.run(
+                ["open", "-a", "GarageBand", temp_midi_path],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True
+            )
+            
+            if result.returncode != 0:
+                # GarageBandがインストールされていない等のエラー
+                return {
+                    "status": "error", 
+                    "message": f"GarageBandの起動に失敗しました。インストールされているか確認してください。\n{result.stderr}"
+                }
+                
+            return {"status": "success", "message": "GarageBandを起動しています..."}
+        except Exception as e:
+            return {"status": "error", "message": str(e)}
 
     def save_app_settings(self, settings):
         """設定データを保存する"""

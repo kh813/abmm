@@ -258,7 +258,7 @@ document.addEventListener("DOMContentLoaded", () => {
       statusPlaceholder.classList.add("hidden");
       statusContent.classList.remove("hidden");
       if (exportCard) {
-        exportCard.classList.remove("hidden");
+        exportCard.style.display = "flex";
       }
       const exportMidiBtn = document.getElementById("export-midi-btn");
       if (exportMidiBtn) {
@@ -520,7 +520,7 @@ document.addEventListener("DOMContentLoaded", () => {
         playAudioBypassingCache(response.audio_url);
 
         if (exportCard) {
-          exportCard.classList.remove("hidden");
+          exportCard.style.display = "flex";
         }
         const exportMidiBtn = document.getElementById("export-midi-btn");
         if (exportMidiBtn) {
@@ -805,9 +805,36 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   if (settingsCloseBtn && settingsModal) {
-    settingsCloseBtn.addEventListener("click", () => {
+    settingsCloseBtn.addEventListener("click", async () => {
       settingsModal.classList.add("hidden");
+      await saveLlmSettings();
     });
+  }
+
+  async function saveLlmSettings() {
+    if (typeof pywebview === "undefined" || !pywebview.api || !pywebview.api.save_app_settings) return;
+    try {
+      const settings = await pywebview.api.get_app_settings();
+      settings.auto_update_check = settingAutoUpdate ? settingAutoUpdate.checked : true;
+      
+      const urlInput = document.getElementById("setting-llm-url");
+      const modelInput = document.getElementById("setting-llm-model");
+      if (urlInput) settings.llm_base_url = urlInput.value.trim();
+      if (modelInput) settings.llm_model = modelInput.value.trim();
+      
+      await pywebview.api.save_app_settings(settings);
+      
+      if (pywebview.api.update_llm_client_config) {
+        await pywebview.api.update_llm_client_config(settings.llm_base_url, settings.llm_model);
+      }
+      
+      // Ollama/LM Studio 状態の再チェック
+      if (typeof checkOllamaStatus === "function") {
+        checkOllamaStatus();
+      }
+    } catch (e) {
+      console.error("Failed to save LLM settings:", e);
+    }
   }
 
   async function loadSettingsAndDiskInfo() {
@@ -819,6 +846,10 @@ document.addEventListener("DOMContentLoaded", () => {
       if (settingAutoUpdate) {
         settingAutoUpdate.checked = settings.auto_update_check !== false;
       }
+      const urlInput = document.getElementById("setting-llm-url");
+      const modelInput = document.getElementById("setting-llm-model");
+      if (urlInput) urlInput.value = settings.llm_base_url || "http://localhost:11434";
+      if (modelInput) modelInput.value = settings.llm_model || "llama3.2:3b";
       
       // 2. ディスク・モデル情報の取得
       const info = await pywebview.api.get_models_disk_info();
@@ -971,7 +1002,7 @@ document.addEventListener("DOMContentLoaded", () => {
           statusPlaceholder.classList.add("hidden");
           statusContent.classList.remove("hidden");
           if (exportCard) {
-            exportCard.classList.remove("hidden");
+            exportCard.style.display = "flex";
           }
           if (exportMidiBtn) {
             exportMidiBtn.disabled = false;
@@ -1036,5 +1067,34 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // アプリ起動時にスペック検出を実行
   initHardwareSpecs();
+
+  // --- GarageBand 連携 ---
+  const garagebandBtn = document.getElementById("garageband-btn");
+  if (garagebandBtn) {
+    garagebandBtn.addEventListener("click", async () => {
+      if (typeof pywebview === "undefined" || !pywebview.api || !pywebview.api.open_in_garageband) {
+        alert("APIが利用できません。");
+        return;
+      }
+      
+      garagebandBtn.disabled = true;
+      const originalText = garagebandBtn.querySelector(".btn-text").textContent;
+      garagebandBtn.querySelector(".btn-text").textContent = "🎹 起動中...";
+      
+      try {
+        const res = await pywebview.api.open_in_garageband();
+        if (res.status === "success") {
+          alert("GarageBandを起動しています。MIDIデータが自動的に読み込まれます。");
+        } else {
+          alert("エラー: " + res.message);
+        }
+      } catch (err) {
+        alert("エラーが発生しました: " + err);
+      } finally {
+        garagebandBtn.disabled = false;
+        garagebandBtn.querySelector(".btn-text").textContent = originalText;
+      }
+    });
+  }
 });
 

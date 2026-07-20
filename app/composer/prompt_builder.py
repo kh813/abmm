@@ -13,7 +13,7 @@ JSON Schema format:
 {
   "tempo_bpm": int (50-150),
   "key_mode": "major" | "minor",
-  "style": "lofi" | "jazz" | "pop" | "ambient" | "rock" | "edm" | "trance" | "chillhop" | "triphop",
+  "style": "lofi" | "jazz" | "pop" | "ambient" | "rock" | "edm" | "trance" | "chillhop" | "triphop" | "bossanova",
   "instruments": ["piano", "guitar", "bass", "drums"],
   "melody_style": "steady" | "expressive" | "complex",
   "rhythm_variation": "none" | "slight" | "heavy",
@@ -76,7 +76,16 @@ CHORD_MAP = {
     
     # Minor seventh
     "Cm7": [60, 63, 67, 70], "Dm7": [62, 65, 69, 72], "Em7": [64, 67, 71, 74],
-    "Am7": [57, 60, 64, 67], "Bm7": [59, 62, 66, 72]
+    "Am7": [57, 60, 64, 67], "Bm7": [59, 62, 66, 72],
+    
+    # sus4 / 7sus4
+    "Csus4": [60, 65, 67], "Dsus4": [62, 67, 69], "Esus4": [64, 69, 71], "Fsus4": [65, 70, 72], "Gsus4": [67, 72, 74], "Asus4": [69, 74, 76], "Bsus4": [59, 64, 66],
+    "C7sus4": [60, 65, 67, 70], "D7sus4": [62, 67, 69, 72], "E7sus4": [64, 69, 71, 74], "A7sus4": [69, 74, 76, 79], "G7sus4": [67, 72, 74, 77],
+    
+    # 9th chords
+    "Cmaj9": [60, 64, 67, 71, 74], "Fmaj9": [65, 69, 72, 76, 79],
+    "C9": [60, 64, 67, 70, 74], "D9": [62, 66, 69, 72, 76], "E9": [64, 68, 71, 74, 78], "G9": [67, 71, 74, 77, 81], "A9": [69, 73, 76, 79, 83],
+    "Cm9": [60, 63, 67, 70, 74], "Dm9": [62, 65, 69, 72, 76], "Em9": [64, 67, 71, 74, 78], "Am9": [57, 60, 64, 67, 71]
 }
 
 def get_chord_pitches(chord_name: str, key_offset: int = 0) -> list:
@@ -90,8 +99,42 @@ def get_chord_pitches(chord_name: str, key_offset: int = 0) -> list:
         if len(chord_name) > 1 and chord_name[1] in ("#", "b"):
             base_note += chord_name[1]
             
-        is_minor = "m" in chord_name and "maj" not in chord_name.lower()
-        notes_offsets = [0, 3, 7] if is_minor else [0, 4, 7]
+        # テンション解析
+        has_7 = "7" in chord_name
+        has_9 = "9" in chord_name
+        is_maj = "maj" in chord_name.lower() or "M" in chord_name
+        is_sus4 = "sus4" in chord_name.lower()
+        is_power = "5" in chord_name and not has_7 and not has_9
+        is_minor = "m" in chord_name and not is_maj and not is_sus4 and not is_power
+        
+        if is_power:
+            notes_offsets = [0, 7]  # パワーコード (ルート & 5度のみ)
+        elif is_sus4:
+            if has_7:
+                notes_offsets = [0, 5, 7, 10]
+            else:
+                notes_offsets = [0, 5, 7]
+        elif is_minor:
+            if has_9:
+                notes_offsets = [0, 3, 7, 10, 14] # m9 (root, b3, 5, b7, 9)
+            elif has_7:
+                notes_offsets = [0, 3, 7, 10] # m7
+            else:
+                notes_offsets = [0, 3, 7] # m
+        else: # Major
+            if has_9:
+                if is_maj:
+                    notes_offsets = [0, 4, 7, 11, 14] # maj9
+                else:
+                    notes_offsets = [0, 4, 7, 10, 14] # dominant 9 (9)
+            elif has_7:
+                if is_maj:
+                    notes_offsets = [0, 4, 7, 11] # maj7
+                else:
+                    notes_offsets = [0, 4, 7, 10] # 7
+            else:
+                notes_offsets = [0, 4, 7] # major triad
+            
         base_pitches_dict = {
             "C": 60, "C#": 61, "Db": 61, "D": 62, "D#": 63, "Eb": 63,
             "E": 64, "F": 65, "F#": 66, "Gb": 66, "G": 67, "G#": 68,
@@ -101,6 +144,155 @@ def get_chord_pitches(chord_name: str, key_offset: int = 0) -> list:
         base_pitches = [root + offset for offset in notes_offsets]
         
     return [p + key_offset for p in base_pitches]
+
+def arrange_chords_for_bossanova(chords: list[str]) -> list[str]:
+    """コード進行をボサノバらしいテンションコードやセブンスコードに自動アレンジする"""
+    arranged = []
+    for chord in chords:
+        c = chord.strip()
+        # すでに複雑なテンションがある場合はそのまま
+        if "9" in c or "11" in c or "13" in c or "maj7" in c.lower() or "m7" in c:
+            if c == "Em7":
+                arranged.append("Em9")
+            elif c == "Am7":
+                arranged.append("Am9")
+            elif c == "Dm7":
+                arranged.append("Dm9")
+            else:
+                arranged.append(c)
+            continue
+            
+        # 単純なコードをボサノバ風に変換
+        if c == "C":
+            arranged.append("Cmaj7")
+        elif c == "G":
+            arranged.append("Gmaj7")
+        elif c == "F":
+            arranged.append("Fmaj7")
+        elif c == "D":
+            arranged.append("D7")
+        elif c == "A":
+            arranged.append("A7")
+        elif c == "E":
+            arranged.append("E7")
+        elif c == "B":
+            arranged.append("B7")
+        elif c == "Am":
+            arranged.append("Am7")
+        elif c == "Em":
+            arranged.append("Em7")
+        elif c == "Dm":
+            arranged.append("Dm7")
+        elif c == "Bm":
+            arranged.append("Bm7")
+        elif c == "F#m" or c == "Gbm":
+            arranged.append("F#m7")
+        elif c == "C#m" or c == "Dbm":
+            arranged.append("C#m7")
+        elif c == "G#m" or c == "Abm":
+            arranged.append("G#m7")
+        elif c == "Dsus4":
+            arranged.append("D7(9)" if random.random() < 0.5 else "D9")
+        elif c == "A7sus4":
+            arranged.append("A7(9)" if random.random() < 0.5 else "A9")
+        else:
+            arranged.append(c)
+    return arranged
+
+def arrange_chords_by_style(chords: list[str], style: str) -> list[str]:
+    """スタイルに応じてコード進行の構成（テンション等）を自動アレンジする"""
+    style_lower = style.lower()
+    
+    # 1. ボサノバ/ジャズ/ローファイ
+    if style_lower in ("bossanova", "bossa", "jazz", "lofi", "funk"):
+        return arrange_chords_for_bossanova(chords)
+        
+    # 2. アンビエント / チルアウト (Enya風など)
+    elif style_lower in ("ambient", "chillhop", "triphop"):
+        arranged = []
+        for c in chords:
+            c_strip = c.strip()
+            # テンションを追加
+            if c_strip == "C": arranged.append("Cmaj7")
+            elif c_strip == "G": arranged.append("Gmaj7")
+            elif c_strip == "F": arranged.append("Fmaj7")
+            elif c_strip == "D": arranged.append("Dadd9")
+            elif c_strip == "A": arranged.append("Aadd9")
+            elif c_strip == "Em": arranged.append("Em7")
+            elif c_strip == "Am": arranged.append("Am7")
+            elif c_strip == "Dm": arranged.append("Dm9")
+            elif c_strip == "Em7": arranged.append("Em9")
+            elif c_strip == "Dsus4": arranged.append("Dadd9")
+            elif c_strip == "A7sus4": arranged.append("A7")
+            else:
+                arranged.append(c_strip)
+        return arranged
+        
+    # 3. ロック / メタル / グランジ (テンションを削ぎ落としてパワーコード化する)
+    elif style_lower in ("rock", "metal", "grunge", "nirvana_lofi"):
+        arranged = []
+        for c in chords:
+            c_strip = c.strip()
+            # 最初のルート音（C, C#, Db等）を抽出して「5」を付与する
+            base_note = c_strip[0].upper()
+            if len(c_strip) > 1 and c_strip[1] in ("#", "b"):
+                base_note += c_strip[1]
+            arranged.append(base_note + "5")
+        return arranged
+        
+    # 4. レゲエ / ポップス (極めてシンプルにする)
+    elif style_lower in ("reggae", "pop"):
+        arranged = []
+        for c in chords:
+            c_strip = c.strip()
+            # テンションを削ぎ落とす
+            if c_strip == "Em7": arranged.append("Em")
+            elif c_strip == "Dsus4": arranged.append("D")
+            elif c_strip == "A7sus4": arranged.append("A")
+            elif c_strip == "Cmaj7": arranged.append("C")
+            elif c_strip == "Gmaj7": arranged.append("G")
+            elif c_strip == "Fmaj7": arranged.append("F")
+            elif c_strip == "Am7": arranged.append("Am")
+            elif c_strip == "Dm7": arranged.append("Dm")
+            else:
+                arranged.append(c_strip)
+        return arranged
+        
+    return chords
+
+def parse_key_offset_from_description(description: str) -> int:
+    """指示テキストからキー変更（転調）の指示を抽出し、key_offset値を返す"""
+    desc = description.lower()
+    if any(w in desc for w in ["原曲", "そのまま", "オリジナル", "original"]):
+        return 999
+    
+    # 1. 直接的な数値指定の検出 (例: キー+2, key -3, 2半音上げて, etc.)
+    m_plus = re.search(r'(?:key|キー|カポ|capo|pitch|ピッチ)\s*([\+\-]\d+)', desc)
+    if m_plus:
+        return int(m_plus.group(1))
+        
+    m_up = re.search(r'(\d+)\s*(?:半音|step|steps)?\s*(?:上げて|上げ|up)', desc)
+    if m_up:
+        return int(m_up.group(1))
+        
+    m_down = re.search(r'(\d+)\s*(?:半音|step|steps)?\s*(?:下げて|下げ|down)', desc)
+    if m_down:
+        return -int(m_down.group(1))
+        
+    # 2. キー名指定の検出 (例: in C, キーをAmにして)
+    # 元の曲が Wonderwall (Em/G) だと仮定した場合のターゲットキーへのトランスポーズ
+    # Wonderwall の基準キーは G Major / E minor (offset = 0)
+    key_map = {
+        "c": 5, "c#": 6, "db": 6, "d": 7, "d#": 8, "eb": 8, "e": 9, "f": 10, "f#": 11, "gb": 11, "g": 0, "g#": 1, "ab": 1, "a": 2, "a#": 3, "bb": 3, "b": 4
+    }
+    m_key = re.search(r'(?:key|キー|in|トランスポーズ)\s*(?:を|に)?\s*([a-g][#b]?)(?:m|major|minor)?', desc)
+    if m_key:
+        target_key = m_key.group(1)
+        if target_key in key_map:
+            # G Major (0) からの差分
+            return key_map[target_key]
+            
+    return 0
 
 def build_prompt(
     description: str,
@@ -150,6 +342,28 @@ LOCAL_SONG_DATABASE = [
         "custom_chords": {
             "verse": ["Em7", "G", "Dsus4", "A7sus4"],
             "chorus": ["C", "D", "Em7", "G"]
+        },
+        "custom_melody": {
+            "verse": [
+                # 小節 0 (Em7)
+                [(0, 78), (2, 79), (4, 78), (6, 79), (8, 78), (10, 79)],
+                # 小節 1 (G)
+                [(0, 78), (2, 76), (4, 74), (6, 76), (8, 74)],
+                # 小節 2 (Dsus4)
+                [(0, 78), (2, 79), (4, 78), (6, 79), (8, 78), (10, 79)],
+                # 小節 3 (A7sus4)
+                [(0, 78), (2, 76), (4, 74), (6, 76), (8, 74)]
+            ],
+            "chorus": [
+                # 小節 0 (C)
+                [(0, 79), (2, 81), (4, 83), (6, 83), (8, 83), (10, 83), (12, 83)],
+                # 小節 1 (D)
+                [(0, 81), (2, 83), (4, 84), (6, 84), (8, 84), (10, 84), (12, 84)],
+                # 小節 2 (Em7)
+                [(0, 83), (2, 84), (4, 86), (6, 86), (8, 86), (10, 86), (12, 86)],
+                # 小節 3 (G)
+                [(0, 83), (4, 81), (8, 79), (12, 79)]
+            ]
         }
     },
     {
@@ -174,6 +388,28 @@ LOCAL_SONG_DATABASE = [
         "custom_chords": {
             "verse": ["F", "Em7", "A7", "Dm", "Bb", "C7", "F"],
             "chorus": ["Dm", "G7", "Bb", "F"]
+        },
+        "custom_melody": {
+            "verse": [
+                # 小節 0 (F): "Yes-ter-day" (G - F - F)
+                [(2, 67), (4, 65), (8, 65)],
+                # 小節 1 (Em7/A7): "all my troubles" (A - B - C# - D - E)
+                [(0, 69), (3, 71), (4, 73), (6, 74), (8, 76), (10, 77), (12, 76), (14, 74)],
+                # 小節 2 (Dm): "now it looks as though"
+                [(0, 76), (2, 74), (4, 72), (6, 74), (8, 77), (10, 81), (12, 79)],
+                # 小節 3 (Bb/C7): "oh, I believe in yesterday"
+                [(0, 77), (2, 79), (4, 81), (6, 79), (8, 77), (10, 76), (12, 77)]
+            ],
+            "chorus": [
+                # 小節 0 (Dm/G7): "Why she had to go"
+                [(0, 81), (4, 79), (8, 77), (10, 76), (12, 74)],
+                # 小節 1 (Bb/F): "I don't know, she wouldn't say"
+                [(0, 77), (4, 79), (8, 81), (10, 79), (12, 77), (14, 77)],
+                # 小節 2 (Dm/G7): "I said something wrong"
+                [(0, 81), (4, 79), (8, 77), (10, 76), (12, 74)],
+                # 小節 3 (Bb/F): "now I long for yesterday"
+                [(0, 77), (4, 79), (8, 81), (10, 79), (12, 77), (14, 77)]
+            ]
         }
     },
     {
@@ -273,7 +509,8 @@ def check_local_song_database(description: str) -> Optional[Dict[str, Any]]:
             if kw in desc_lower:
                 return {
                     "style": entry["style"],
-                    "custom_chords": entry["custom_chords"]
+                    "custom_chords": entry["custom_chords"],
+                    "custom_melody": entry.get("custom_melody")
                 }
     return None
 
@@ -333,7 +570,13 @@ def search_chords_online(song_query: str) -> Optional[List[str]]:
     
     print(f"[Online Chord Search] Searching chords online for: {song_query}")
     try:
-        headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36"}
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+            "Accept-Language": "ja,en-US;q=0.9,en;q=0.8",
+            "Cache-Control": "max-age=0",
+            "Connection": "keep-alive"
+        }
         search_url = f"https://html.duckduckgo.com/html/?q={urllib.parse.quote(song_query + ' chords')}"
         req = urllib.request.Request(search_url, headers=headers)
         
@@ -342,16 +585,21 @@ def search_chords_online(song_query: str) -> Optional[List[str]]:
             
         redirect_urls = re.findall(r'uddg=([^&"#]+)', html)
         decoded_urls = []
+        seen_urls = set()
         for u in redirect_urls:
-            decoded_urls.append(urllib.parse.unquote(u))
+            dec = urllib.parse.unquote(u)
+            if dec not in seen_urls:
+                seen_urls.add(dec)
+                decoded_urls.append(dec)
             
         # 候補となるURLをフィルタリングして収集（最大6個まで試す）
         candidate_urls = []
         for u in decoded_urls:
             u_lower = u.lower()
-            if "ultimate-guitar.com" in u_lower:
-                continue # クローラー規制のあるサイトはスキップ
-            if any(domain in u_lower for domain in ["chord", "tab", "songsterr", "guitar", "music", "tabs"]):
+            # クローラー規制（403等）の厳しいサイトやコード譜形式でないサイトを事前に除外する
+            if any(domain in u_lower for domain in ["ultimate-guitar.com", "e-chords.com", "songsterr.com", "gprotab.net"]):
+                continue
+            if any(domain in u_lower for domain in ["chord", "tab", "guitar", "music", "tabs"]):
                 candidate_urls.append(u)
                 
         # バックアップとして、上位3つのURLも追加しておく
@@ -584,7 +832,7 @@ def get_song_structure(total_bars_needed: int, key_mode: str, style: str, custom
     }
     
     style_mapped = style.lower() if style.lower() in ("pop", "jazz", "rock", "ambient", "edm", "trance", "chillhop", "triphop") else "pop"
-    if style.lower() == "lofi":
+    if style.lower() in ("bossanova", "bossa", "lofi"):
         style_mapped = "jazz"
     elif style.lower() in ("synthwave", "house", "techno"):
         style_mapped = "edm"
@@ -753,14 +1001,48 @@ def expand_chord_plan_to_midi(plan: Dict[str, Any], duration_minutes: float) -> 
     
     # ジャンル指定のオーバーライド
     genre = plan.get("genre", "auto")
+    desc = plan.get("description", "")
+    desc_lower = desc.lower()
+    
+    # 指示文から明示的なスタイル指定があるかチェック
+    styles_list = ["lofi", "jazz", "pop", "ambient", "rock", "edm", "trance", "chillhop", "triphop", "bossanova", "bossa", "funk", "grunge", "metal", "nirvana"]
+    japanese_styles_map = {
+        "ボサノバ": "bossanova", "ボサノヴァ": "bossanova",
+        "ジャズ": "jazz", "ポップ": "pop", "ロック": "rock",
+        "アンビエント": "ambient", "ファンク": "funk",
+        "グランジ": "rock", "メタル": "rock", "ニルヴァーナ": "rock", "ニルバーナ": "rock"
+    }
+    
+    detected_desc_style = None
+    for s in styles_list:
+        if s in desc_lower:
+            detected_desc_style = s
+            break
+    if not detected_desc_style:
+        for jp_s, eng_s in japanese_styles_map.items():
+            if jp_s in desc_lower:
+                detected_desc_style = eng_s
+                break
+                
+    # スタイルの決定優先度：UI上のジャンル指定 (auto以外) を最優先し、次に指示文からの自動検出を適用する
     if genre != "auto":
         style = genre.lower()
         if style == "lofi":
             style = "jazz"
+        elif style == "bossa":
+            style = "bossanova"
+    elif detected_desc_style:
+        style = detected_desc_style
+        if style == "bossa":
+            style = "bossanova"
+        elif style in ("nirvana", "grunge"):
+            style = "rock"
             
     # トランス/チルホップ/トリップホップおよび新ジャンルのテンポを設定
     if style in ("trance", "dream_house"):
         tempo_bpm = 138
+    elif style in ("bossanova", "bossa"):
+        tempo_bpm = 120
     elif style == "chillhop":
         tempo_bpm = 85
     elif style == "triphop":
@@ -786,6 +1068,12 @@ def expand_chord_plan_to_midi(plan: Dict[str, Any], duration_minutes: float) -> 
             
     instruments = plan.get("instruments", ["piano", "guitar", "bass", "drums"])
     
+    # physical パラメータの取得とスケーラー計算
+    brightness = float(plan.get("brightness", 0.5))
+    energy = float(plan.get("energy", 0.5))
+    density = float(plan.get("density", 0.5))
+    energy_factor = 0.4 + energy * 1.2
+    
     # 指定の再生時間をカバーするのに必要な総小節数を計算
     seconds_per_beat = 60.0 / tempo_bpm
     seconds_per_bar = seconds_per_beat * 4.0
@@ -794,6 +1082,15 @@ def expand_chord_plan_to_midi(plan: Dict[str, Any], duration_minutes: float) -> 
     
     # カスタムDSL進行指定のチェック
     custom_chords = plan.get("custom_chords")
+    
+    # スキーマ例のダミー値（C-G-Am-F等）と同じなら、LLMのデフォルトコピペとみなして無視する
+    if custom_chords and isinstance(custom_chords, dict):
+        v = custom_chords.get("verse", [])
+        c = custom_chords.get("chorus", [])
+        if v == ["C", "G", "Am", "F"] and c == ["F", "G", "Em", "Am"]:
+            print("[expand_chord_plan_to_midi] Dummy chords detected from LLM response. Ignoring custom_chords.")
+            custom_chords = None
+
     if custom_chords:
         if isinstance(custom_chords, dict):
             # LLM / データベース形式 {"verse": [...], "chorus": [...]}
@@ -804,7 +1101,19 @@ def expand_chord_plan_to_midi(plan: Dict[str, Any], duration_minutes: float) -> 
             verse_chords = custom_chords
             chorus_chords = custom_chords
             
-        key_offset = 0 # 指定時は転調を行わない
+        # スタイルに応じてコード進行を自動アレンジする
+        verse_chords = arrange_chords_by_style(verse_chords, style)
+        chorus_chords = arrange_chords_by_style(chorus_chords, style)
+            
+        # 指示文からキーオフセット（転調）をパースする
+        description = plan.get("description", "")
+        key_offset = parse_key_offset_from_description(description)
+        
+        # 毎回同じキーで再生されるのを避けるために、マンネリ防止の自動転調を適用する
+        if key_offset == 999:
+            key_offset = 0
+        elif key_offset == 0:
+            key_offset = random.choice([-3, -2, -1, 2, 3, 4])
         
         sections = []
         current_bar = 0
@@ -839,19 +1148,36 @@ def expand_chord_plan_to_midi(plan: Dict[str, Any], duration_minutes: float) -> 
         sections = get_song_structure(total_bars_needed, key_mode, style, custom_chords_tuple=custom_tuple)
 
     # 各楽器トラックごとのノート生成
-    track_notes: Dict[str, List[MidiNote]] = {
-        "piano": [],
-        "guitar": [],
-        "bass": [],
-        "drums": []
+    # リズムバリエーションをランダム決定 (曲ごとに異なるビート感を演出)
+    chillhop_pattern = random.choice([0, 1, 2])
+    jazz_pattern = random.choice([0, 1])
+    piano_pattern = random.choice([0, 1, 2])
+    bass_pattern = random.choice([0, 1, 2])
+
+    # セクション種別ごとに1トラック：track_notes[楽器][セクション名] = [ノート]
+    track_notes: Dict[str, Dict[str, List[MidiNote]]] = {
+        "piano": {},
+        "guitar": {},
+        "bass": {},
+        "drums": {},
+        "melody": {}
     }
-    
+    current_sec_name: str = "verse"  # セクションループ内で更新
+
+    def tnote(inst: str, note: MidiNote) -> None:
+        """現在のセクション種別バケットにノートを追加するヘルパー"""
+        bucket = track_notes[inst]
+        if current_sec_name not in bucket:
+            bucket[current_sec_name] = []
+        bucket[current_sec_name].append(note)
+
     for sec in sections:
         start_bar = sec["start_bar"]
         bars = sec["bars"]
         chords = sec["chords"]
         intensity = sec["intensity"]
         key_offset = sec["key_offset"]
+        current_sec_name = sec["name"]  # ヘルパーで参照
         
         if not chords:
             chords = ["C"]
@@ -860,65 +1186,136 @@ def expand_chord_plan_to_midi(plan: Dict[str, Any], duration_minutes: float) -> 
             bar_index = start_bar + b
             base_step = bar_index * 16
             
+            # セクションや小節によって演奏パターンを動的に切り替えて単調さを防ぐ（マルチトラック・バリエーション）
+            if intensity == "low" or sec["name"] in ("intro", "outro", "bridge"):
+                # 静かなセクション用
+                piano_pattern_to_use = "ballad_arpeggio"
+                guitar_pattern_to_use = "classic_arp"
+                bass_pattern_to_use = "standard_bass"
+            else:
+                # 賑やかなセクション（サビなど）用。偶数/奇数小節で切り替えて人間味を出す
+                if b % 2 == 0:
+                    piano_pattern_to_use = "syncopated"
+                    guitar_pattern_to_use = "syncopated_strum"
+                    bass_pattern_to_use = "syncopated_bass"
+                else:
+                    piano_pattern_to_use = "offbeat"
+                    guitar_pattern_to_use = "broken_chord"
+                    bass_pattern_to_use = "bounce_bass"
+            
              # 各小節のコード進行
             chord_name = chords[b % len(chords)]
             pitches = get_chord_pitches(chord_name, key_offset)
             
             # 1. ピアノ（コード・伴奏）トラック
             if "piano" in instruments:
-                if intensity == "low":
-                    if piano_rhythm_pattern == "ballad_arpeggio":
+                if style in ("bossanova", "bossa"):
+                    # ボサノバ特有のコンピングパターン
+                    if b % 2 == 0:
+                        offsets = [0, 3, 6, 10, 13]
+                    else:
+                        offsets = [2, 6, 8, 11, 14]
+                    for step_offset in offsets:
+                        for p in pitches:
+                            tnote("piano", MidiNote(step=base_step + step_offset, pitch=p, velocity=65, duration_steps=2))
+                elif style == "reggae":
+                    # レゲエ特有のスカンク（裏打ち）バッキング
+                    # 2拍目と4拍目の頭（または各拍の裏）で「チャッ、チャッ」と短く和音を刻む
+                    for step_offset in [2, 6, 10, 14]:
+                        for p in pitches:
+                            tnote("piano", MidiNote(step=base_step + step_offset, pitch=p, velocity=65, duration_steps=1))
+                elif style in ("jazz", "lofi", "chillhop"):
+                    # ジャズ/ローファイ/チルホップのバッキングバリエーション
+                    if piano_pattern == 0:
+                        # コンピング（裏打ち）
+                        if b % 2 == 0:
+                            offsets = [2, 6, 12]
+                        else:
+                            offsets = [0, 10, 14]
+                        for step_offset in offsets:
+                            for p in pitches:
+                                tnote("piano", MidiNote(step=base_step + step_offset, pitch=p, velocity=60, duration_steps=2))
+                    elif piano_pattern == 1:
+                        # 4つ打ちコード（まったりしたバッキング）
+                        for step_offset in [0, 4, 8, 12]:
+                            for p in pitches:
+                                tnote("piano", MidiNote(step=base_step + step_offset, pitch=p, velocity=55, duration_steps=3))
+                    else:
                         # アルペジオ分散和音
                         for i, p in enumerate(pitches):
                             step_offset = i * 4
-                            track_notes["piano"].append(MidiNote(step=base_step + step_offset, pitch=p, velocity=60, duration_steps=4))
+                            tnote("piano", MidiNote(step=base_step + step_offset, pitch=p, velocity=55, duration_steps=4))
+                elif intensity == "low":
+                    if piano_pattern_to_use == "ballad_arpeggio":
+                        # アルペジオ分散和音
+                        for i, p in enumerate(pitches):
+                            step_offset = i * 4
+                            tnote("piano", MidiNote(step=base_step + step_offset, pitch=p, velocity=60, duration_steps=4))
                     else:
                         duration = random.choice([12, 14, 15])
                         for p in pitches:
-                            track_notes["piano"].append(MidiNote(step=base_step + 0, pitch=p, velocity=60, duration_steps=duration))
+                            tnote("piano", MidiNote(step=base_step + 0, pitch=p, velocity=60, duration_steps=duration))
                 else:
                     # サビ（高強度）のバッキングパターン分岐
-                    if piano_rhythm_pattern == "syncopated":
+                    if piano_pattern_to_use == "syncopated":
                         offsets = [0, 3, 8, 11] if b % 2 == 0 else [0, 3, 6, 12]
                         for step_offset in offsets:
                             for p in pitches:
-                                track_notes["piano"].append(MidiNote(step=base_step + step_offset, pitch=p, velocity=75, duration_steps=3))
-                    elif piano_rhythm_pattern == "offbeat":
+                                tnote("piano", MidiNote(step=base_step + step_offset, pitch=p, velocity=75, duration_steps=3))
+                    elif piano_pattern_to_use == "offbeat":
                         # オフビートで弾むパターン
                         for step_offset in [2, 6, 10, 14]:
                             for p in pitches:
-                                track_notes["piano"].append(MidiNote(step=base_step + step_offset, pitch=p, velocity=72, duration_steps=2))
-                    elif piano_rhythm_pattern == "ballad_arpeggio":
+                                tnote("piano", MidiNote(step=base_step + step_offset, pitch=p, velocity=72, duration_steps=2))
+                    elif piano_pattern_to_use == "ballad_arpeggio":
                         # 4つ刻みのバッキング
                         for step_offset in [0, 4, 8, 12]:
                             for p in pitches:
-                                track_notes["piano"].append(MidiNote(step=base_step + step_offset, pitch=p, velocity=70, duration_steps=3))
+                                tnote("piano", MidiNote(step=base_step + step_offset, pitch=p, velocity=70, duration_steps=3))
                     else:
                         # "standard" パターン
                         if (b + 1) % 4 == 0:
                             for p in pitches:
-                                track_notes["piano"].append(MidiNote(step=base_step + 0, pitch=p, velocity=75, duration_steps=4))
-                                track_notes["piano"].append(MidiNote(step=base_step + 6, pitch=p, velocity=75, duration_steps=4))
-                                track_notes["piano"].append(MidiNote(step=base_step + 12, pitch=p, velocity=70, duration_steps=3))
+                                tnote("piano", MidiNote(step=base_step + 0, pitch=p, velocity=75, duration_steps=4))
+                                tnote("piano", MidiNote(step=base_step + 6, pitch=p, velocity=75, duration_steps=4))
+                                tnote("piano", MidiNote(step=base_step + 12, pitch=p, velocity=70, duration_steps=3))
                         elif b % 2 == 1:
                             for p in pitches:
-                                track_notes["piano"].append(MidiNote(step=base_step + 0, pitch=p, velocity=75, duration_steps=6))
-                                track_notes["piano"].append(MidiNote(step=base_step + 6, pitch=p, velocity=70, duration_steps=4))
-                                track_notes["piano"].append(MidiNote(step=base_step + 12, pitch=p, velocity=65, duration_steps=3))
+                                tnote("piano", MidiNote(step=base_step + 0, pitch=p, velocity=75, duration_steps=6))
+                                tnote("piano", MidiNote(step=base_step + 6, pitch=p, velocity=70, duration_steps=4))
+                                tnote("piano", MidiNote(step=base_step + 12, pitch=p, velocity=65, duration_steps=3))
                         else:
                             for p in pitches:
-                                track_notes["piano"].append(MidiNote(step=base_step + 0, pitch=p, velocity=75, duration_steps=6))
-                                track_notes["piano"].append(MidiNote(step=base_step + 8, pitch=p, velocity=70, duration_steps=6))
+                                tnote("piano", MidiNote(step=base_step + 0, pitch=p, velocity=75, duration_steps=6))
+                                tnote("piano", MidiNote(step=base_step + 8, pitch=p, velocity=70, duration_steps=6))
                     
             # 2. ギター（アルペジオ）トラック
             if "guitar" in instruments:
-                if intensity == "low":
+                if style in ("bossanova", "bossa"):
+                    # ギターもボサノバ特有のバッキングパターン
+                    if b % 2 == 0:
+                        offsets = [0, 3, 6, 8, 11, 14]
+                    else:
+                        offsets = [0, 4, 6, 10, 14]
+                    for step_offset in offsets:
+                        for p in pitches:
+                            tnote("guitar", MidiNote(step=base_step + step_offset, pitch=p + 12, velocity=60, duration_steps=2))
+                elif style in ("jazz", "lofi"):
+                    # ジャズ・ギター（4つ打ちコンピングまたはオフビート）
+                    if b % 2 == 0:
+                        offsets = [4, 12]
+                    else:
+                        offsets = [0, 8]
+                    for step_offset in offsets:
+                        for p in pitches:
+                            tnote("guitar", MidiNote(step=base_step + step_offset, pitch=p + 12, velocity=55, duration_steps=2))
+                elif intensity == "low":
                     offsets = [0, 8] if b % 2 == 0 else [0, 4, 8, 12]
                     for i, step_offset in enumerate(offsets):
                         pitch_val = pitches[i % len(pitches)] + 12
-                        track_notes["guitar"].append(MidiNote(step=base_step + step_offset, pitch=pitch_val, velocity=55, duration_steps=4))
+                        tnote("guitar", MidiNote(step=base_step + step_offset, pitch=pitch_val, velocity=55, duration_steps=4))
                 else:
-                    if guitar_arpeggio_pattern == "broken_chord":
+                    if guitar_pattern_to_use == "broken_chord":
                         # 低音と高音の交互アルペジオ
                         offsets = [0, 2, 4, 6, 8, 10, 12, 14]
                         for i, step_offset in enumerate(offsets):
@@ -926,18 +1323,18 @@ def expand_chord_plan_to_midi(plan: Dict[str, Any], duration_minutes: float) -> 
                                 p_val = pitches[0] + 12
                             else:
                                 p_val = pitches[i % len(pitches)] + 12
-                            track_notes["guitar"].append(MidiNote(step=base_step + step_offset, pitch=p_val, velocity=60, duration_steps=2))
-                    elif guitar_arpeggio_pattern == "syncopated_strum":
+                            tnote("guitar", MidiNote(step=base_step + step_offset, pitch=p_val, velocity=60, duration_steps=2))
+                    elif guitar_pattern_to_use == "syncopated_strum":
                         # リズミカルなカッティング風
                         for step_offset in [0, 3, 6, 8, 11, 14]:
                             p_val = pitches[step_offset % len(pitches)] + 12
-                            track_notes["guitar"].append(MidiNote(step=base_step + step_offset, pitch=p_val, velocity=65, duration_steps=2))
-                    elif guitar_arpeggio_pattern == "walking_arp":
+                            tnote("guitar", MidiNote(step=base_step + step_offset, pitch=p_val, velocity=65, duration_steps=2))
+                    elif guitar_pattern_to_use == "walking_arp":
                         # 上昇するアルペジオ
                         for i in range(8):
                             step_offset = i * 2
                             p_val = pitches[i % len(pitches)] + 12
-                            track_notes["guitar"].append(MidiNote(step=base_step + step_offset, pitch=p_val, velocity=58, duration_steps=2))
+                            tnote("guitar", MidiNote(step=base_step + step_offset, pitch=p_val, velocity=58, duration_steps=2))
                     else:
                         # "classic_arp" パターン
                         if b % 2 == 1:
@@ -947,28 +1344,87 @@ def expand_chord_plan_to_midi(plan: Dict[str, Any], duration_minutes: float) -> 
                         step_offsets = [0, 4, 8, 12]
                         for i, (step_offset, p) in enumerate(zip(step_offsets, extended_pitches)):
                             dur = 3 if i < 3 else (4 if (b + 1) % 4 == 0 else 3)
-                            track_notes["guitar"].append(MidiNote(step=base_step + step_offset, pitch=p + 12, velocity=65, duration_steps=dur))
+                            tnote("guitar", MidiNote(step=base_step + step_offset, pitch=p + 12, velocity=65, duration_steps=dur))
                     
             # 3. ベーストラック
             if "bass" in instruments:
                 root_pitch = pitches[0] - 24  # 2オクターブ低く
-                if style == "trance":
-                    # トランス用ローリングベースライン (16分音符のギャロップ)
+                if style in ("bossanova", "bossa"):
+                    fifth_pitch = pitches[2] - 24 if len(pitches) > 2 else root_pitch + 7
+                    # 1拍目(0): ルート音
+                    tnote("bass", MidiNote(step=base_step + 0, pitch=root_pitch, velocity=75, duration_steps=4))
+                    # 2拍目裏(6): ルート音
+                    tnote("bass", MidiNote(step=base_step + 6, pitch=root_pitch, velocity=70, duration_steps=2))
+                    # 3拍目(8): 5度音
+                    tnote("bass", MidiNote(step=base_step + 8, pitch=fifth_pitch, velocity=75, duration_steps=4))
+                    # 4拍目裏(14): 経過音
+                    next_chord_name = chords[(b + 1) % len(chords)]
+                    next_pitches = get_chord_pitches(next_chord_name, key_offset)
+                    next_root = next_pitches[0] - 24
+                    approach_pitch = next_root + 1 if root_pitch > next_root else next_root - 1
+                    tnote("bass", MidiNote(step=base_step + 14, pitch=approach_pitch, velocity=70, duration_steps=2))
+                elif style in ("jazz", "lofi"):
+                    # 常時ウォーキング・ベース
+                    third_pitch = pitches[1] - 24 if len(pitches) > 1 else root_pitch + 4
+                    fifth_pitch = pitches[2] - 24 if len(pitches) > 2 else root_pitch + 7
+                    next_chord_name = chords[(b + 1) % len(chords)]
+                    next_pitches = get_chord_pitches(next_chord_name, key_offset)
+                    next_root = next_pitches[0] - 24
+                    approach_pitch = next_root + 1 if root_pitch > next_root else next_root - 1
+                    
+                    # 1拍目: ルート
+                    tnote("bass", MidiNote(step=base_step + 0, pitch=root_pitch, velocity=75, duration_steps=3))
+                    # 2拍目: 3度
+                    tnote("bass", MidiNote(step=base_step + 4, pitch=third_pitch, velocity=70, duration_steps=3))
+                    # 3拍目: 5度
+                    tnote("bass", MidiNote(step=base_step + 8, pitch=fifth_pitch, velocity=72, duration_steps=3))
+                    # 4拍目: アプローチ音（経過音）
+                    tnote("bass", MidiNote(step=base_step + 12, pitch=approach_pitch, velocity=70, duration_steps=3))
+                elif style in ("chillhop", "lofi"):
+                    # チルホップ/ローファイ用のベースバリエーション
+                    if bass_pattern == 0:
+                        # 1拍目と3拍目に合わせるシンプルなベース
+                        tnote("bass", MidiNote(step=base_step + 0, pitch=root_pitch, velocity=75, duration_steps=6))
+                        tnote("bass", MidiNote(step=base_step + 8, pitch=root_pitch, velocity=70, duration_steps=6))
+                    elif bass_pattern == 1:
+                        # シンコペーション（少し弾む）
+                        tnote("bass", MidiNote(step=base_step + 0, pitch=root_pitch, velocity=75, duration_steps=4))
+                        tnote("bass", MidiNote(step=base_step + 6, pitch=root_pitch, velocity=70, duration_steps=4))
+                        tnote("bass", MidiNote(step=base_step + 12, pitch=root_pitch + 12, velocity=65, duration_steps=3))
+                    else:
+                        # 穏やかなルート白玉（ロングトーン）
+                        tnote("bass", MidiNote(step=base_step + 0, pitch=root_pitch, velocity=70, duration_steps=14))
+                elif style == "reggae":
+                    # レゲエ特有のうねるベースライン（1拍目を抜くのが基本）
+                    # ドラムのワンドロップ（ステップ8）に合わせて、ステップ 4, 8, 12 でシンコペーションする
+                    tnote("bass", MidiNote(step=base_step + 4, pitch=root_pitch, velocity=80, duration_steps=2))
+                    fifth_pitch = pitches[2] - 24 if len(pitches) > 2 else root_pitch + 7
+                    tnote("bass", MidiNote(step=base_step + 8, pitch=fifth_pitch, velocity=85, duration_steps=2))
+                    tnote("bass", MidiNote(step=base_step + 12, pitch=root_pitch, velocity=75, duration_steps=2))
+                elif style == "synthwave":
+                    # シンセウェーブ王道のオクターブ交互8分音符ベース (ズズズズという疾走感)
+                    for h in range(8):
+                        step_offset = h * 2
+                        # 低音と高音（オクターブ上）を交互に演奏
+                        pitch_val = root_pitch if h % 2 == 0 else root_pitch + 12
+                        tnote("bass", MidiNote(step=base_step + step_offset, pitch=pitch_val, velocity=85, duration_steps=1))
+                elif style == "trance":
+                    # トランス用ローリングベースライン (16分音符 of ギャロップ)
                     for p_idx in range(4):
                         beat_offset = p_idx * 4
-                        track_notes["bass"].append(MidiNote(step=base_step + beat_offset + 0, pitch=root_pitch, velocity=85, duration_steps=1))
-                        track_notes["bass"].append(MidiNote(step=base_step + beat_offset + 2, pitch=root_pitch, velocity=80, duration_steps=1))
-                        track_notes["bass"].append(MidiNote(step=base_step + beat_offset + 3, pitch=root_pitch, velocity=85, duration_steps=1))
+                        tnote("bass", MidiNote(step=base_step + beat_offset + 0, pitch=root_pitch, velocity=85, duration_steps=1))
+                        tnote("bass", MidiNote(step=base_step + beat_offset + 2, pitch=root_pitch, velocity=80, duration_steps=1))
+                        tnote("bass", MidiNote(step=base_step + beat_offset + 3, pitch=root_pitch, velocity=85, duration_steps=1))
                 elif intensity == "low":
                     if b % 2 == 1 and len(pitches) > 2:
                         fifth_pitch = pitches[2] - 24
-                        track_notes["bass"].append(MidiNote(step=base_step + 0, pitch=root_pitch, velocity=75, duration_steps=10))
-                        track_notes["bass"].append(MidiNote(step=base_step + 12, pitch=fifth_pitch, velocity=65, duration_steps=3))
+                        tnote("bass", MidiNote(step=base_step + 0, pitch=root_pitch, velocity=75, duration_steps=10))
+                        tnote("bass", MidiNote(step=base_step + 12, pitch=fifth_pitch, velocity=65, duration_steps=3))
                     else:
-                        track_notes["bass"].append(MidiNote(step=base_step + 0, pitch=root_pitch, velocity=75, duration_steps=14))
+                        tnote("bass", MidiNote(step=base_step + 0, pitch=root_pitch, velocity=75, duration_steps=14))
                 else:
                     # サビ（高強度）のベースパターン分岐
-                    if bass_rhythm_pattern == "walking_bass":
+                    if bass_pattern_to_use == "walking_bass":
                         fifth_pitch = pitches[2] - 24 if len(pitches) > 2 else root_pitch + 7
                         third_pitch = pitches[1] - 24 if len(pitches) > 1 else root_pitch + 4
                         steps_and_pitches = [
@@ -978,16 +1434,16 @@ def expand_chord_plan_to_midi(plan: Dict[str, Any], duration_minutes: float) -> 
                             (12, root_pitch + 12 if random.random() < 0.5 else root_pitch)
                         ]
                         for step_val, p_val in steps_and_pitches:
-                            track_notes["bass"].append(MidiNote(step=base_step + step_val, pitch=p_val, velocity=80, duration_steps=3))
-                    elif bass_rhythm_pattern == "syncopated_bass":
-                        track_notes["bass"].append(MidiNote(step=base_step + 0, pitch=root_pitch, velocity=85, duration_steps=4))
-                        track_notes["bass"].append(MidiNote(step=base_step + 6, pitch=root_pitch, velocity=80, duration_steps=4))
-                        track_notes["bass"].append(MidiNote(step=base_step + 12, pitch=root_pitch, velocity=85, duration_steps=3))
-                    elif bass_rhythm_pattern == "bounce_bass":
-                        track_notes["bass"].append(MidiNote(step=base_step + 0, pitch=root_pitch, velocity=85, duration_steps=3))
-                        track_notes["bass"].append(MidiNote(step=base_step + 4, pitch=root_pitch + 12, velocity=78, duration_steps=3))
-                        track_notes["bass"].append(MidiNote(step=base_step + 8, pitch=root_pitch, velocity=85, duration_steps=3))
-                        track_notes["bass"].append(MidiNote(step=base_step + 12, pitch=root_pitch + 12, velocity=78, duration_steps=3))
+                            tnote("bass", MidiNote(step=base_step + step_val, pitch=p_val, velocity=80, duration_steps=3))
+                    elif bass_pattern_to_use == "syncopated_bass":
+                        tnote("bass", MidiNote(step=base_step + 0, pitch=root_pitch, velocity=85, duration_steps=4))
+                        tnote("bass", MidiNote(step=base_step + 6, pitch=root_pitch, velocity=80, duration_steps=4))
+                        tnote("bass", MidiNote(step=base_step + 12, pitch=root_pitch, velocity=85, duration_steps=3))
+                    elif bass_pattern_to_use == "bounce_bass":
+                        tnote("bass", MidiNote(step=base_step + 0, pitch=root_pitch, velocity=85, duration_steps=3))
+                        tnote("bass", MidiNote(step=base_step + 4, pitch=root_pitch + 12, velocity=78, duration_steps=3))
+                        tnote("bass", MidiNote(step=base_step + 8, pitch=root_pitch, velocity=85, duration_steps=3))
+                        tnote("bass", MidiNote(step=base_step + 12, pitch=root_pitch + 12, velocity=78, duration_steps=3))
                     else:
                         # "standard_bass"
                         next_chord_name = chords[(b + 1) % len(chords)]
@@ -995,135 +1451,338 @@ def expand_chord_plan_to_midi(plan: Dict[str, Any], duration_minutes: float) -> 
                         next_root = next_pitches[0] - 24
                         
                         if (b + 1) % 4 == 0:
-                            track_notes["bass"].append(MidiNote(step=base_step + 0, pitch=root_pitch, velocity=85, duration_steps=4))
-                            track_notes["bass"].append(MidiNote(step=base_step + 6, pitch=root_pitch, velocity=80, duration_steps=4))
+                            tnote("bass", MidiNote(step=base_step + 0, pitch=root_pitch, velocity=85, duration_steps=4))
+                            tnote("bass", MidiNote(step=base_step + 6, pitch=root_pitch, velocity=80, duration_steps=4))
                             approach_pitch = next_root + 1 if root_pitch > next_root else next_root - 1
-                            track_notes["bass"].append(MidiNote(step=base_step + 12, pitch=approach_pitch, velocity=85, duration_steps=3))
+                            tnote("bass", MidiNote(step=base_step + 12, pitch=approach_pitch, velocity=85, duration_steps=3))
                         else:
-                            track_notes["bass"].append(MidiNote(step=base_step + 0, pitch=root_pitch, velocity=85, duration_steps=6))
+                            tnote("bass", MidiNote(step=base_step + 0, pitch=root_pitch, velocity=85, duration_steps=6))
                             fifth_pitch = pitches[2] - 24 if len(pitches) > 2 else root_pitch + 7
-                            track_notes["bass"].append(MidiNote(step=base_step + 8, pitch=fifth_pitch, velocity=80, duration_steps=4))
-                            track_notes["bass"].append(MidiNote(step=base_step + 12, pitch=root_pitch + 12, velocity=75, duration_steps=3))
+                            tnote("bass", MidiNote(step=base_step + 8, pitch=fifth_pitch, velocity=80, duration_steps=4))
+                            tnote("bass", MidiNote(step=base_step + 12, pitch=root_pitch + 12, velocity=75, duration_steps=3))
                 
             # 4. ドラムトラック (Channel 9, Kick=36, Snare=38, Hihat=42)
             if "drums" in instruments:
-                if style in ("edm", "trance"):
-                    # EDM 4つ打ちドラムパターン
+                if style in ("bossanova", "bossa"):
+                    # 1. キック
+                    tnote("drums", MidiNote(step=base_step + 0, pitch=36, velocity=85, duration_steps=2))
+                    tnote("drums", MidiNote(step=base_step + 6, pitch=36, velocity=60, duration_steps=1))
+                    tnote("drums", MidiNote(step=base_step + 8, pitch=36, velocity=85, duration_steps=2))
+                    tnote("drums", MidiNote(step=base_step + 14, pitch=36, velocity=60, duration_steps=1))
+
+                    # 2. ハイハット (8分音符で刻む)
+                    for h in range(8):
+                        step_val = h * 2
+                        vel = 65 if h % 2 == 0 else 45
+                        tnote("drums", MidiNote(step=base_step + step_val, pitch=42, velocity=vel, duration_steps=1))
+
+                    # 3. リムショット (ボサノバクラーベ)
+                    rim_pitch = 37
+                    if b % 2 == 0:
+                        for r_step in [0, 3, 6, 10, 13]:
+                            tnote("drums", MidiNote(step=base_step + r_step, pitch=rim_pitch, velocity=75, duration_steps=1))
+                    else:
+                        for r_step in [2, 6, 8, 12, 14]:
+                            tnote("drums", MidiNote(step=base_step + r_step, pitch=rim_pitch, velocity=75, duration_steps=1))
+                elif style in ("jazz", "lofi"):
+                    # ジャズ・スウィング・ドラムパターン
+                    # 1. ライドシンバル (チー・チッキ・チー・チッキ)
+                    cymbal_pitch = 51
+                    for beat in [0, 4, 8, 12]:
+                        tnote("drums", MidiNote(step=base_step + beat, pitch=cymbal_pitch, velocity=70, duration_steps=2))
+                    for bounce in [3, 11]:
+                         tnote("drums", MidiNote(step=base_step + bounce, pitch=cymbal_pitch, velocity=50, duration_steps=1))
+                    # 2. ハイハットペダル (2拍、4拍)
+                    tnote("drums", MidiNote(step=base_step + 4, pitch=44, velocity=65, duration_steps=1))
+                    tnote("drums", MidiNote(step=base_step + 12, pitch=44, velocity=65, duration_steps=1))
+                    # 3. キック (フェザリング)
+                    for k in [0, 8]:
+                        tnote("drums", MidiNote(step=base_step + k, pitch=36, velocity=45, duration_steps=1))
+                    # 4. スネア (コンピング)
+                    if b % 2 == 0:
+                         tnote("drums", MidiNote(step=base_step + 10, pitch=38, velocity=40, duration_steps=1))
+                    else:
+                         tnote("drums", MidiNote(step=base_step + 14, pitch=38, velocity=45, duration_steps=1))
+                elif style in ("edm", "trance", "synthwave"):
+                    # EDM / トランス / シンセウェーブ 4つ打ち疾走ビート
                     for k in [0, 4, 8, 12]:
-                        track_notes["drums"].append(MidiNote(step=base_step + k, pitch=36, velocity=100, duration_steps=2))
-                    track_notes["drums"].append(MidiNote(step=base_step + 4, pitch=38, velocity=95, duration_steps=2))
-                    track_notes["drums"].append(MidiNote(step=base_step + 12, pitch=38, velocity=95, duration_steps=2))
+                        tnote("drums", MidiNote(step=base_step + k, pitch=36, velocity=100, duration_steps=2))
+                    tnote("drums", MidiNote(step=base_step + 4, pitch=38, velocity=95, duration_steps=2))
+                    tnote("drums", MidiNote(step=base_step + 12, pitch=38, velocity=95, duration_steps=2))
                     for h in [2, 6, 10, 14]:
-                        track_notes["drums"].append(MidiNote(step=base_step + h, pitch=42, velocity=80, duration_steps=1))
+                        tnote("drums", MidiNote(step=base_step + h, pitch=42, velocity=80, duration_steps=1))
                     if (b + 1) % drum_fill_frequency == 0:
                         for h in [8, 10, 12, 13, 14, 15]:
-                            track_notes["drums"].append(MidiNote(step=base_step + h, pitch=38, velocity=90, duration_steps=1))
-                elif style == "chillhop":
-                    # Nujabes風 Boom Bap ビート
-                    track_notes["drums"].append(MidiNote(step=base_step + 0, pitch=36, velocity=90, duration_steps=2))
-                    if b % 2 == 0:
-                        track_notes["drums"].append(MidiNote(step=base_step + 10, pitch=36, velocity=85, duration_steps=1))
+                            tnote("drums", MidiNote(step=base_step + h, pitch=38, velocity=90, duration_steps=1))
+                elif style == "reggae":
+                    # レゲエ特有のワンドロップ（One Drop）ビート
+                    # 1拍目（ステップ0）は無音、3拍目（ステップ8）にキックとスネアを同時打鍵！
+                    tnote("drums", MidiNote(step=base_step + 8, pitch=36, velocity=90, duration_steps=2)) # キック
+                    tnote("drums", MidiNote(step=base_step + 8, pitch=38, velocity=90, duration_steps=2)) # スネア/リム
+                    
+                    # 4拍目の裏（ステップ14）に軽いキックを入れるバリエーション
+                    if b % 2 == 1:
+                        tnote("drums", MidiNote(step=base_step + 14, pitch=36, velocity=75, duration_steps=1))
+                        
+                    # 裏打ちハイハット（ツク、ツク）
+                    for h in [2, 6, 10, 14]:
+                        tnote("drums", MidiNote(step=base_step + h, pitch=42, velocity=80, duration_steps=1))
+                elif style in ("chillhop", "lofi"):
+                    # チルホップ/ローファイのドラムバリエーション
+                    if chillhop_pattern == 0:
+                        # 標準Boom Bap
+                        tnote("drums", MidiNote(step=base_step + 0, pitch=36, velocity=90, duration_steps=2))
+                        if b % 2 == 0:
+                            tnote("drums", MidiNote(step=base_step + 10, pitch=36, velocity=85, duration_steps=1))
+                        else:
+                            tnote("drums", MidiNote(step=base_step + 8, pitch=36, velocity=85, duration_steps=2))
+                            tnote("drums", MidiNote(step=base_step + 11, pitch=36, velocity=80, duration_steps=1))
+                        tnote("drums", MidiNote(step=base_step + 4, pitch=38, velocity=85, duration_steps=2))
+                        tnote("drums", MidiNote(step=base_step + 12, pitch=38, velocity=85, duration_steps=2))
+                    elif chillhop_pattern == 1:
+                        # シンコペーション・ビート
+                        tnote("drums", MidiNote(step=base_step + 0, pitch=36, velocity=90, duration_steps=2))
+                        tnote("drums", MidiNote(step=base_step + 6, pitch=36, velocity=80, duration_steps=1))
+                        tnote("drums", MidiNote(step=base_step + 12, pitch=36, velocity=85, duration_steps=1))
+                        tnote("drums", MidiNote(step=base_step + 4, pitch=38, velocity=85, duration_steps=2))
+                        tnote("drums", MidiNote(step=base_step + 14, pitch=38, velocity=85, duration_steps=2))
                     else:
-                        track_notes["drums"].append(MidiNote(step=base_step + 8, pitch=36, velocity=85, duration_steps=2))
-                        track_notes["drums"].append(MidiNote(step=base_step + 11, pitch=36, velocity=80, duration_steps=1))
-                    track_notes["drums"].append(MidiNote(step=base_step + 4, pitch=38, velocity=85, duration_steps=2))
-                    track_notes["drums"].append(MidiNote(step=base_step + 12, pitch=38, velocity=85, duration_steps=2))
+                        # レイドバック（ダブ・スロウ風味）
+                        tnote("drums", MidiNote(step=base_step + 0, pitch=36, velocity=90, duration_steps=2))
+                        tnote("drums", MidiNote(step=base_step + 8, pitch=36, velocity=85, duration_steps=2))
+                        tnote("drums", MidiNote(step=base_step + 12, pitch=38, velocity=90, duration_steps=2))
+                    
+                    # ハイハットペダル / クローズドハット
                     for h in range(8):
                         step_val = h * 2
                         vel = 75 if h % 2 == 0 else 45
-                        track_notes["drums"].append(MidiNote(step=base_step + step_val, pitch=42, velocity=vel, duration_steps=1))
+                        tnote("drums", MidiNote(step=base_step + step_val, pitch=42, velocity=vel, duration_steps=1))
                 elif style == "triphop":
                     # Trip Hop 重厚・スロウビート
-                    track_notes["drums"].append(MidiNote(step=base_step + 0, pitch=36, velocity=95, duration_steps=2))
+                    tnote("drums", MidiNote(step=base_step + 0, pitch=36, velocity=95, duration_steps=2))
                     if b % 2 == 1:
-                        track_notes["drums"].append(MidiNote(step=base_step + 10, pitch=36, velocity=85, duration_steps=2))
-                    track_notes["drums"].append(MidiNote(step=base_step + 4, pitch=38, velocity=95, duration_steps=2))
-                    track_notes["drums"].append(MidiNote(step=base_step + 12, pitch=38, velocity=95, duration_steps=2))
+                        tnote("drums", MidiNote(step=base_step + 10, pitch=36, velocity=85, duration_steps=2))
+                    tnote("drums", MidiNote(step=base_step + 4, pitch=38, velocity=95, duration_steps=2))
+                    tnote("drums", MidiNote(step=base_step + 12, pitch=38, velocity=95, duration_steps=2))
                     for h in [0, 4, 8, 12]:
-                        track_notes["drums"].append(MidiNote(step=base_step + h, pitch=42, velocity=60, duration_steps=1))
+                        tnote("drums", MidiNote(step=base_step + h, pitch=42, velocity=60, duration_steps=1))
                 elif intensity == "low" and sec["name"] in ("intro", "outro"):
                     # イントロやアウトロはドラムなし、または非常に薄いハイハットのみ
                     if b % 2 == 0:
-                        track_notes["drums"].append(MidiNote(step=base_step + 0, pitch=42, velocity=50, duration_steps=1))
+                        tnote("drums", MidiNote(step=base_step + 0, pitch=42, velocity=50, duration_steps=1))
                 else:
                     # 通常ドラムパターン：drum_fill_frequency小節の後半でドラムフィルを入れる
                     if (b + 1) % drum_fill_frequency == 0:
                         # キック
-                        track_notes["drums"].append(MidiNote(step=base_step + 0, pitch=36, velocity=95, duration_steps=2))
+                        tnote("drums", MidiNote(step=base_step + 0, pitch=36, velocity=95, duration_steps=2))
                         # スネア (2拍)
-                        track_notes["drums"].append(MidiNote(step=base_step + 4, pitch=38, velocity=90, duration_steps=2))
+                        tnote("drums", MidiNote(step=base_step + 4, pitch=38, velocity=90, duration_steps=2))
                         for h in [0, 2, 4, 6]:
-                            track_notes["drums"].append(MidiNote(step=base_step + h, pitch=42, velocity=70, duration_steps=1))
+                            tnote("drums", MidiNote(step=base_step + h, pitch=42, velocity=70, duration_steps=1))
                         # ドラムフィル（スネア・ロータム連打）
-                        track_notes["drums"].append(MidiNote(step=base_step + 8, pitch=38, velocity=80, duration_steps=1))
-                        track_notes["drums"].append(MidiNote(step=base_step + 10, pitch=38, velocity=85, duration_steps=1))
-                        track_notes["drums"].append(MidiNote(step=base_step + 12, pitch=43, velocity=85, duration_steps=1))
-                        track_notes["drums"].append(MidiNote(step=base_step + 13, pitch=43, velocity=90, duration_steps=1))
-                        track_notes["drums"].append(MidiNote(step=base_step + 14, pitch=38, velocity=90, duration_steps=1))
-                        track_notes["drums"].append(MidiNote(step=base_step + 15, pitch=38, velocity=95, duration_steps=1))
+                        tnote("drums", MidiNote(step=base_step + 8, pitch=38, velocity=80, duration_steps=1))
+                        tnote("drums", MidiNote(step=base_step + 10, pitch=38, velocity=85, duration_steps=1))
+                        tnote("drums", MidiNote(step=base_step + 12, pitch=43, velocity=85, duration_steps=1))
+                        tnote("drums", MidiNote(step=base_step + 13, pitch=43, velocity=90, duration_steps=1))
+                        tnote("drums", MidiNote(step=base_step + 14, pitch=38, velocity=90, duration_steps=1))
+                        tnote("drums", MidiNote(step=base_step + 15, pitch=38, velocity=95, duration_steps=1))
                     else:
                         # 通常の小節パターン
                         # キック (1拍、3拍の頭と裏)
-                        track_notes["drums"].append(MidiNote(step=base_step + 0, pitch=36, velocity=90, duration_steps=2))
+                        tnote("drums", MidiNote(step=base_step + 0, pitch=36, velocity=90, duration_steps=2))
                         if intensity == "high":
-                            track_notes["drums"].append(MidiNote(step=base_step + 8, pitch=36, velocity=90, duration_steps=2))
+                            tnote("drums", MidiNote(step=base_step + 8, pitch=36, velocity=90, duration_steps=2))
                             if b % 2 == 1:
-                                track_notes["drums"].append(MidiNote(step=base_step + 10, pitch=36, velocity=75, duration_steps=1))
+                                tnote("drums", MidiNote(step=base_step + 10, pitch=36, velocity=75, duration_steps=1))
                                 
                         # スネア (2拍、4拍)
-                        track_notes["drums"].append(MidiNote(step=base_step + 4, pitch=38, velocity=85, duration_steps=2))
-                        track_notes["drums"].append(MidiNote(step=base_step + 12, pitch=38, velocity=85, duration_steps=2))
+                        tnote("drums", MidiNote(step=base_step + 4, pitch=38, velocity=85, duration_steps=2))
+                        tnote("drums", MidiNote(step=base_step + 12, pitch=38, velocity=85, duration_steps=2))
                         
                         # ハイハット
-                        hihat_density = 8 if intensity == "high" else 4
+                        # density（密度）パラメータで細かさを物理決定
+                        if density < 0.3:
+                            hihat_density = 2
+                        elif density > 0.7:
+                            hihat_density = 8
+                        else:
+                            hihat_density = 4
+                            
                         step_jump = 16 // hihat_density
                         for h in range(hihat_density):
                             vel = 70 if h % 2 == 0 else 55
-                            track_notes["drums"].append(MidiNote(step=base_step + (h * step_jump), pitch=42, velocity=vel, duration_steps=1))
+                            tnote("drums", MidiNote(step=base_step + (h * step_jump), pitch=42, velocity=vel, duration_steps=1))
 
-    # トラックオブジェクトの構築
+            # 5. メロディ（主旋律）トラックの生成
+            if sec["name"] in ("verse", "bridge", "chorus"):
+                # カスタムメロディの定義があるかチェック
+                custom_melody = plan.get("custom_melody")
+                sec_melody = None
+                if custom_melody and isinstance(custom_melody, dict):
+                    sec_name_key = "chorus" if sec["name"] == "chorus" else "verse"
+                    sec_melody = custom_melody.get(sec_name_key)
+                
+                if sec_melody:
+                    # 小節インデックスに基づいて、定義済みのメロディパターンを適用する
+                    bar_melody_notes = sec_melody[b % len(sec_melody)]
+                    for step_offset, base_pitch in bar_melody_notes:
+                        # 基準キーでのMIDIノート番号にkey_offsetを足して移調する
+                        melody_pitch = base_pitch + key_offset
+                        tnote("melody", MidiNote(step=base_step + step_offset, pitch=melody_pitch, velocity=95, duration_steps=2))
+                else:
+                    # デフォルトのメロディ生成（オクターブ折り返しで音域 [60, 84] 内に旋律を保つ）
+                    def fit_pitch_in_range(pitch: int, min_p: int = 60, max_p: int = 84) -> int:
+                        """オクターブを加減算して音高を [min_p, max_p] に収め、音程差を破壊しない"""
+                        while pitch > max_p:
+                            pitch -= 12
+                        while pitch < min_p:
+                            pitch += 12
+                        return pitch
+
+                    is_chorus = sec["name"] == "chorus"
+                    if style in ("bossanova", "bossa", "jazz", "lofi"):
+                        # ジャズ/ボサノバ風：浮遊感のあるメロディ
+                        melody_steps = [0, 2, 4, 6, 8, 10, 12, 14] if intensity == "high" else [0, 3, 6, 8, 10, 14]
+                        for step_offset in melody_steps:
+                            if random.random() < 0.65:
+                                p_base = random.choice(pitches)
+                                raw_pitch = p_base + 12
+                                if random.random() < 0.35 and len(pitches) > 2:
+                                    raw_pitch = pitches[0] + 14  # 9thテンション音
+                                melody_pitch = fit_pitch_in_range(raw_pitch, 60, 84)
+                                tnote("melody", MidiNote(step=base_step + step_offset, pitch=melody_pitch, velocity=90, duration_steps=2))
+                    else:
+                        # ポップス/ロック/その他：動的フレーズ＆コード音によるメロディ生成
+                        melody_steps = [0, 2, 4, 6, 8, 10, 12, 14] if (intensity == "high" or is_chorus) else [0, 4, 8, 12]
+                        prev_pitch = None
+                        for step_offset in melody_steps:
+                            if random.random() < 0.75:
+                                if prev_pitch is not None and random.random() < 0.4:
+                                    # 同一音の重複またはモチーフ維持
+                                    raw_pitch = prev_pitch
+                                else:
+                                    p_base = random.choice(pitches)
+                                    octave_shift = 12 if not is_chorus else (12 if random.random() < 0.4 else 24)
+                                    raw_pitch = p_base + octave_shift
+                                melody_pitch = fit_pitch_in_range(raw_pitch, 62 if is_chorus else 60, 84)
+                                prev_pitch = melody_pitch
+                                tnote("melody", MidiNote(step=base_step + step_offset, pitch=melody_pitch, velocity=95, duration_steps=2))
+
+    # ─── トラックオブジェクトの構築（セクション種別ごとに1トラック）─────────────────
+    # 楽器ごとのチャンネル・楽器名を決定するヘルパー情報
+    def get_inst_info(inst_key: str) -> tuple[str, str, int]:
+        """(inst_name, track_base_name, channel) を返す"""
+        if inst_key == "piano":
+            if style in ("edm", "trance", "synthwave", "techno", "house"):
+                return "synth_lead", "Synth Lead", 0
+            elif style in ("rock", "metal", "grunge", "nirvana_lofi"):
+                return "distortion_guitar", "Dist. Guitar", 0
+            else:
+                return "acoustic_piano", "Acoustic Piano", 0
+        elif inst_key == "guitar":
+            if style in ("edm", "trance", "synthwave", "techno", "house", "triphop", "ambient", "classical"):
+                return "synth_pad", "Synth Pad", 1
+            elif style in ("rock", "metal", "grunge", "nirvana_lofi"):
+                return "overdriven_guitar", "OD Guitar", 1
+            else:
+                return "acoustic_guitar", "Acoustic Guitar", 1
+        elif inst_key == "bass":
+            if style in ("edm", "trance", "synthwave", "techno", "house", "triphop"):
+                return "synth_bass", "Synth Bass", 2
+            elif style in ("rock", "metal", "grunge", "nirvana_lofi"):
+                return "electric_bass_pick", "Pick Bass", 2
+            else:
+                return "electric_bass", "Electric Bass", 2
+        elif inst_key == "drums":
+            return "synth_drum_kit", "Drums", 9
+        else:  # melody
+            if style in ("edm", "trance", "synthwave", "techno", "house"):
+                return "synth_lead", "Melody Lead", 3
+            elif style in ("jazz", "lofi", "bossanova", "bossa"):
+                inst = "vibraphone" if random.random() < 0.5 else "electric_piano"
+                return inst, "Melody Vib", 3
+            elif style in ("rock", "metal", "grunge", "nirvana_lofi"):
+                inst = "distortion_guitar" if random.random() < 0.5 else "electric_guitar_clean"
+                return inst, "Melody Guitar", 3
+            else:
+                inst = "acoustic_guitar" if "piano" in instruments else "acoustic_piano"
+                return inst, "Melody", 3
+
+    # セクション種別の表示順を固定（intro→verse→bridge→chorus→outro）
+    SEC_ORDER = ["intro", "verse", "bridge", "chorus", "outro"]
+
     tracks = []
-    if "piano" in instruments and track_notes["piano"]:
-        inst_name = "synth_lead" if style in ("edm", "trance", "synthwave", "techno", "house") else "acoustic_piano"
-        track_name = "Synth Lead" if style in ("edm", "trance", "synthwave", "techno", "house") else "Acoustic Piano"
-        tracks.append(MidiTrack(
-            track_id="track_piano",
-            track_name=track_name,
-            instrument=inst_name,
-            channel=0,
-            notes=track_notes["piano"]
-        ))
+    for inst_key in ["piano", "guitar", "bass", "drums", "melody"]:
+        # 楽器が無効なら skip
+        if inst_key != "melody" and inst_key != "drums" and inst_key not in instruments:
+            continue
+        if inst_key == "drums" and "drums" not in instruments:
+            continue
+        if inst_key == "melody" and not any(track_notes["melody"].values()):
+            continue
+
+        inst_name, base_name, channel = get_inst_info(inst_key)
+        sec_buckets = track_notes[inst_key]
+
+        # セクション種別を出現順（曲の構成順）でソート
+        present_secs = list(sec_buckets.keys())
+        ordered_secs = [s for s in SEC_ORDER if s in present_secs]
+        ordered_secs += [s for s in present_secs if s not in SEC_ORDER]  # 未知のセクション名は後ろへ
+
+        for sec_type in ordered_secs:
+            notes = sec_buckets[sec_type]
+            if not notes:
+                continue
+            label = sec_type.capitalize()  # "Verse", "Chorus", etc.
+            tracks.append(MidiTrack(
+                track_id=f"track_{inst_key}_{sec_type}",
+                track_name=f"{base_name} - {label}",
+                instrument=inst_name,
+                channel=channel,
+                notes=notes
+            ))
         
-    if "guitar" in instruments and track_notes["guitar"]:
-        inst_name = "synth_pad" if style in ("edm", "trance", "synthwave", "techno", "house", "triphop", "ambient", "classical") else "acoustic_guitar"
-        track_name = "Synth Pad" if style in ("edm", "trance", "synthwave", "techno", "house", "triphop", "ambient", "classical") else "Acoustic Guitar"
-        tracks.append(MidiTrack(
-            track_id="track_guitar",
-            track_name=track_name,
-            instrument=inst_name,
-            channel=1,
-            notes=track_notes["guitar"]
-        ))
+    print("\n" + "="*60)
+    print("[ABMM COMPOSITION LOG - ACTUAL GENERATED CHORDS]")
+    print(f"  Description:       '{plan.get('description', '')}'")
+    print(f"  UI Genre / Style:  '{plan.get('genre', 'auto')}' -> Final Style: '{style}'")
+    print(f"  Tempo / Key Mode:  {tempo_bpm} BPM / {key_mode}")
+    print("  Structure & Chords (with applied key offset):")
+    for sec in sections:
+        sec_chords = sec["chords"]
+        offset = sec.get("key_offset", 0)
+        offset_str = f" (key offset: {offset:+d})" if offset != 0 else ""
+        print(f"    - Section '{sec['name']}': {sec_chords}{offset_str}")
         
-    if "bass" in instruments and track_notes["bass"]:
-        inst_name = "synth_bass" if style in ("edm", "trance", "synthwave", "techno", "house", "triphop") else "electric_bass"
-        track_name = "Synth Bass" if style in ("edm", "trance", "synthwave", "techno", "house", "triphop") else "Electric Bass"
-        tracks.append(MidiTrack(
-            track_id="track_bass",
-            track_name=track_name,
-            instrument=inst_name,
-            channel=2,
-            notes=track_notes["bass"]
-        ))
+    print("\n  Generated MIDI Tracks & Notes (Phase 1 Output):")
+    for track in tracks:
+        print(f"    - Track '{track.track_name}' (Instrument: {track.instrument}, Channel: {track.channel}):")
+        print(f"        Total Notes: {len(track.notes)}")
+        # 最初の12ノートをプレビュー出力
+        preview_notes = track.notes[:12]
+        notes_str = ", ".join([f"(step={n.step}, pitch={n.pitch}, vel={n.velocity}, dur={n.duration_steps})" for n in preview_notes])
+        if len(track.notes) > 12:
+            notes_str += ", ..."
+        print(f"        Notes Preview: {notes_str}")
+    print("="*60 + "\n")
         
-    if "drums" in instruments and track_notes["drums"]:
-        tracks.append(MidiTrack(
-            track_id="track_drums",
-            track_name="Drums",
-            instrument="synth_drum_kit",
-            channel=9,
-            notes=track_notes["drums"]
-        ))
+    # energy & brightness 物理パラメータの一括反映
+    for track in tracks:
+        # 1. 音量（Energy）のベロシティ反映（ドラム含む全トラック）
+        for note in track.notes:
+            note.velocity = max(20, min(127, int(note.velocity * energy_factor)))
+            
+        # 2. 明るさ（Brightness）のメロディオクターブピッチ反映
+        if track.track_id.startswith("track_melody"):
+            brightness_shift = 0
+            if brightness < 0.35:
+                brightness_shift = -12
+            elif brightness > 0.75:
+                brightness_shift = 12
+                
+            if brightness_shift != 0:
+                for note in track.notes:
+                    note.pitch = max(0, min(127, note.pitch + brightness_shift))
         
     final_sections = [MidiSection(name=sec["name"], start_bar=sec["start_bar"], bars=sec["bars"]) for sec in sections]
     
@@ -1274,50 +1933,72 @@ def generate_midi_json(
             "custom_chords": dsl_plan["custom_chords"],
             "custom_bars": dsl_plan.get("custom_bars"),
             "genre": genre,
-            "chord_progression": chord_progression
+            "chord_progression": chord_progression,
+            "description": description
         }
         return expand_chord_plan_to_midi(plan, duration_minutes)
 
     # 2. ローカル辞書およびオンラインスクレイピングによるコード進行の事前検出
     detected_chords = None
     detected_style = None
+    # ※ detected_melody は廃止 — DBのハードコードメロディは使わず、常にコード音から動的生成する
 
-    local_match = check_local_song_database(description)
+    desc_lower = description.lower()
+    is_bossanova = any(kw in desc_lower for kw in ["bossa", "bossanova", "ボサノバ", "ボサノヴァ"])
+
+    song_query = extract_song_query(description)
+    local_match = check_local_song_database(song_query) if song_query else None
+
+    # DBマッチからはスタイルのヒントのみ取得（コード進行は後でオンラインが上書き可能）
     if local_match:
         print(f"[Database Match] Famous song/style matched: {local_match}")
-        detected_chords = local_match["custom_chords"]
-        detected_style = local_match.get("style")
-    else:
-        song_query = extract_song_query(description)
-        if song_query:
-            desc_lower = description.lower()
-            is_song_request = (
-                "by" in desc_lower or 
-                "の" in description or 
-                "song" in desc_lower or 
-                "曲" in description or 
-                "テーマ" in description or
-                "cover" in desc_lower or
-                any(q in description for q in ['"', "'", "「", "」", "『", "』"]) or
-                len([w for w in song_query.split() if w[0].isupper() and w.lower() not in {"a", "an", "the", "arrange", "play", "compose", "make", "create", "cover"}]) >= 2
-            )
-            generic_words = {"sad", "happy", "lofi", "ambient", "jazz", "rock", "pop", "edm", "trance", "chill", "dark", "fast", "slow", "piano", "guitar", "beat", "drums", "bass", "bgm", "music", "composition"}
-            query_words = set(song_query.lower().split())
-            if query_words.issubset(generic_words) or not song_query.strip():
-                is_song_request = False
-                
-            if is_song_request:
-                online_chords = search_chords_online(song_query)
-                if online_chords:
-                    print(f"[Online Search Match] Chords found online for '{song_query}': {online_chords[:12]}")
-                    half = len(online_chords) // 2
-                    verse_chords = online_chords[:half] if half >= 2 else online_chords
-                    chorus_chords = online_chords[half:] if half >= 2 else online_chords
-                    detected_chords = {
-                        "verse": verse_chords,
-                        "chorus": chorus_chords
-                    }
-                    detected_style = "pop"
+        detected_chords = local_match["custom_chords"]   # DB chords as fallback
+        detected_style = "bossanova" if is_bossanova else local_match.get("style")
+
+    # オンライン検索は曲名がある場合は常に実行（DBマッチがあっても上書き優先）
+    if song_query:
+        is_song_request = (
+            "by" in desc_lower or
+            "の" in description or
+            "song" in desc_lower or
+            "曲" in description or
+            "テーマ" in description or
+            "cover" in desc_lower or
+            "を" in description and "風" in description or
+            any(q in description for q in ['"', "'", "「", "」", "『", "』"]) or
+            len([w for w in song_query.split() if w[0].isupper() and w.lower() not in {"a", "an", "the", "arrange", "play", "compose", "make", "create", "cover"}]) >= 2
+        )
+        generic_words = {"sad", "happy", "lofi", "ambient", "jazz", "rock", "pop", "edm", "trance", "chill", "dark", "fast", "slow", "piano", "guitar", "beat", "drums", "bass", "bgm", "music", "composition"}
+        query_words = set(song_query.lower().split())
+        if query_words.issubset(generic_words) or not song_query.strip():
+            is_song_request = False
+
+        if is_song_request:
+            online_chords = search_chords_online(song_query)
+            if online_chords:
+                print(f"[Online Search Match] Chords found online for '{song_query}': {online_chords[:12]}")
+                # 重複除去しつつ順序を保持し、最大8コードに圧縮する
+                seen = []
+                for c in online_chords:
+                    if c not in seen:
+                        seen.append(c)
+                    if len(seen) >= 8:
+                        break
+                unique_chords = seen
+                # 前半をverse、後半をchorusに（最低2コード保証）
+                half = max(len(unique_chords) // 2, 2)
+                verse_chords = unique_chords[:half]
+                chorus_chords = unique_chords[half:] if len(unique_chords) > half else unique_chords
+                # オンラインコードはDBコードより優先して上書き
+                detected_chords = {
+                    "verse": verse_chords,
+                    "chorus": chorus_chords
+                }
+                if not detected_style:
+                    detected_style = "bossanova" if is_bossanova else "pop"
+
+    if is_bossanova and not detected_style:
+        detected_style = "bossanova"
     prompt = build_prompt(
         description=description,
         tempo_bpm=tempo_bpm,
@@ -1362,12 +2043,22 @@ def generate_midi_json(
             plan = json.loads(clean_text)
             plan["genre"] = genre
             plan["chord_progression"] = chord_progression
+            plan["description"] = description
+            plan["brightness"] = brightness
+            plan["energy"] = energy
+            plan["density"] = density
             
-            # 事前に検出されたコード進行をマージ
+            if instruments and isinstance(instruments, dict):
+                active_insts = [inst for inst, val in instruments.items() if val > 0.0]
+                if active_insts:
+                    plan["instruments"] = active_insts
+            
+            # 事前に検出されたコード進行をマージ（メロディのハードコードは廃止）
             if detected_chords:
                 plan["custom_chords"] = detected_chords
                 if detected_style and not plan.get("style"):
                     plan["style"] = detected_style
+            # custom_melody は設定しない → 常にコード音から動的にメロディを生成させる
             
             # 展開処理の実行
             composition = expand_chord_plan_to_midi(plan, duration_minutes)
@@ -1379,14 +2070,25 @@ def generate_midi_json(
 
     # フォールバック
     print("[Ollama Plan Generation] All attempts failed. Falling back to default Chord Plan.")
+    active_insts = ["piano", "guitar", "bass", "drums"]
+    if instruments and isinstance(instruments, dict):
+        active_insts = [inst for inst, val in instruments.items() if val > 0.0]
+        if not active_insts:
+            active_insts = ["piano"]
+
     default_plan = {
         "tempo_bpm": tempo_bpm,
         "key_mode": key_mode,
         "style": detected_style or "lofi",
-        "instruments": ["piano", "guitar", "bass", "drums"],
+        "instruments": active_insts,
         "genre": genre,
-        "chord_progression": chord_progression
+        "chord_progression": chord_progression,
+        "description": description,
+        "brightness": brightness,
+        "energy": energy,
+        "density": density
     }
     if detected_chords:
         default_plan["custom_chords"] = detected_chords
+    # custom_melody は設定しない → 常にコード音から動的にメロディを生成させる
     return expand_chord_plan_to_midi(default_plan, duration_minutes)
