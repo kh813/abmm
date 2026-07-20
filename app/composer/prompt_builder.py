@@ -1165,6 +1165,8 @@ def _is_valid_chord_token(token: str) -> bool:
 
 def extract_chords_from_raw_tab(text: str) -> list[str]:
     """生のコード譜テキスト（歌詞付きなど）からコード進行記号のみを抽出する"""
+    # ChordPro形式（[C]word などの連結）に対応するため、カッコ類をスペースに置換して単語を分離する
+    text = text.replace('[', ' ').replace(']', ' ').replace('{', ' ').replace('}', ' ')
     found_chords = []
     lines = text.split('\n')
     for line in lines:
