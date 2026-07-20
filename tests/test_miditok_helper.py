@@ -21,11 +21,13 @@ def test_midi_bytes_to_tokens():
         
     comp = MidiComposition(
         tempo_bpm=120,
+        duration_minutes=5.0,
         tracks=[
             MidiTrack(
                 track_id="t1",
                 track_name="Piano",
                 instrument="acoustic_grand_piano",
+                channel=0,
                 notes=[
                     MidiNote(step=0, pitch=60, velocity=90, duration_steps=4),
                     MidiNote(step=4, pitch=64, velocity=90, duration_steps=4),
