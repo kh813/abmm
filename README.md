@@ -96,6 +96,26 @@ chmod +x build_macos.sh
 
 ---
 
+## 🧠 AI・モデル拡張ロードマップ（オープンソース技術方針）
+
+ABMMでは、最新のオープンソース（OSS）音楽生成モデル・ライブラリの利点を完全ローカル環境向けに取り入れています。
+
+### 1. ✅ 即適用・組み込み済み機能
+- **`MidiTok` トークン化モジュールの導入**:
+  - LLM（Ollama等）とのデータ連携効率化のため、標準MIDI表現（REMI等）の相互変換モジュール ([miditok_helper.py](file:///Users/hiroshi/dev/abmm/app/composer/miditok_helper.py)) を導入。
+- **きめ細やかなダイナミクスパラメータ制御**:
+  - FIGARO等のアーキテクチャ設計を参考に、楽曲の密度・エネルギー・楽器バランスなどのスライダー制御プロンプトを統合。
+
+### 2. 🔮 将来的な検討・拡張ロードマップ
+- **FIGARO（シンボリックAI）の直接応用**:
+  - 事前学習済みFIGAROモデルを活用した、既存MIDIトラックの補完（リライト）やフレーズ自動生成機能の検証。
+- **DDSP (Differentiable Digital Signal Processing) レンダラー**:
+  - 生楽器（アコースティックギター、ヴァイオリン等）のリアルな物理モデル＋ニューラル合成を行う Phase 2 (High Quality ティア) プラグインとしての評価。
+- **Meta MusicGen (AudioCraft Melody Conditioning)**:
+  - ハイエンドMac（M-Pro/Max/Ultra 32GB以上）ユーザー向けに、メロディ指示＋テキストプロンプトによる完全オーディオ自動生成オプションの提供検討。
+
+---
+
 ## 📄 ライセンス
 
 [MIT License](file:///Users/hiroshi/dev/abmm/LICENSE)
