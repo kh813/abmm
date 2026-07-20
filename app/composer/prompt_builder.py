@@ -1218,27 +1218,7 @@ def generate_midi_json(
     """
     Ollama経由でLLMに高次のコード構成案を生成させ、それをPython側で展開して完全なMidiCompositionを構築する。
     """
-    # 1. ローカルデータベースおよびDSL構文のチェックとバイパス
-    local_match = check_local_song_database(description)
-    if local_match:
-        print(f"[Database Composer] Famous song/style matched: {local_match}")
-        inst_list = ["piano", "guitar", "bass", "drums"]
-        if instruments:
-            inst_list = [k for k, v in instruments.items() if v > 0.0]
-            if not inst_list:
-                inst_list = ["piano"]
-                
-        plan = {
-            "tempo_bpm": tempo_bpm,
-            "key_mode": key_mode,
-            "style": local_match.get("style", "lofi"),
-            "instruments": inst_list,
-            "custom_chords": local_match["custom_chords"],
-            "genre": genre,
-            "chord_progression": chord_progression
-        }
-        return expand_chord_plan_to_midi(plan, duration_minutes)
-
+    # 1. DSL形式の優先判定（DSLが記述されている場合は即座にバイパス処理）
     dsl_plan = parse_dsl_description(description)
     if dsl_plan:
         print(f"[DSL Composer] Custom chord progression detected: {dsl_plan}")
@@ -1259,52 +1239,47 @@ def generate_midi_json(
             "chord_progression": chord_progression
         }
         return expand_chord_plan_to_midi(plan, duration_minutes)
-    # 2. オンラインコード譜検索のチェックとバイパス
-    song_query = extract_song_query(description)
-    if song_query:
-        desc_lower = description.lower()
-        is_song_request = (
-            "by" in desc_lower or 
-            "の" in description or 
-            "song" in desc_lower or 
-            "曲" in description or 
-            "テーマ" in description or
-            "cover" in desc_lower or
-            any(q in description for q in ['"', "'", "「", "」", "『", "』"]) or
-            len([w for w in song_query.split() if w[0].isupper() and w.lower() not in {"a", "an", "the", "arrange", "play", "compose", "make", "create", "cover"}]) >= 2
-        )
-        generic_words = {"sad", "happy", "lofi", "ambient", "jazz", "rock", "pop", "edm", "trance", "chill", "dark", "fast", "slow", "piano", "guitar", "beat", "drums", "bass", "bgm", "music", "composition"}
-        query_words = set(song_query.lower().split())
-        if query_words.issubset(generic_words) or not song_query.strip():
-            is_song_request = False
-            
-        if is_song_request:
-            online_chords = search_chords_online(song_query)
-            if online_chords:
-                print(f"[Online Composer] Chords found online for '{song_query}': {online_chords[:12]}")
-                inst_list = ["piano", "guitar", "bass", "drums"]
-                if instruments:
-                    inst_list = [k for k, v in instruments.items() if v > 0.0]
-                    if not inst_list:
-                        inst_list = ["piano"]
+
+    # 2. ローカル辞書およびオンラインスクレイピングによるコード進行の事前検出
+    detected_chords = None
+    detected_style = None
+
+    local_match = check_local_song_database(description)
+    if local_match:
+        print(f"[Database Match] Famous song/style matched: {local_match}")
+        detected_chords = local_match["custom_chords"]
+        detected_style = local_match.get("style")
+    else:
+        song_query = extract_song_query(description)
+        if song_query:
+            desc_lower = description.lower()
+            is_song_request = (
+                "by" in desc_lower or 
+                "の" in description or 
+                "song" in desc_lower or 
+                "曲" in description or 
+                "テーマ" in description or
+                "cover" in desc_lower or
+                any(q in description for q in ['"', "'", "「", "」", "『", "』"]) or
+                len([w for w in song_query.split() if w[0].isupper() and w.lower() not in {"a", "an", "the", "arrange", "play", "compose", "make", "create", "cover"}]) >= 2
+            )
+            generic_words = {"sad", "happy", "lofi", "ambient", "jazz", "rock", "pop", "edm", "trance", "chill", "dark", "fast", "slow", "piano", "guitar", "beat", "drums", "bass", "bgm", "music", "composition"}
+            query_words = set(song_query.lower().split())
+            if query_words.issubset(generic_words) or not song_query.strip():
+                is_song_request = False
                 
-                half = len(online_chords) // 2
-                verse_chords = online_chords[:half] if half >= 2 else online_chords
-                chorus_chords = online_chords[half:] if half >= 2 else online_chords
-                
-                plan = {
-                    "tempo_bpm": tempo_bpm,
-                    "key_mode": key_mode,
-                    "style": "pop",
-                    "instruments": inst_list,
-                    "custom_chords": {
+            if is_song_request:
+                online_chords = search_chords_online(song_query)
+                if online_chords:
+                    print(f"[Online Search Match] Chords found online for '{song_query}': {online_chords[:12]}")
+                    half = len(online_chords) // 2
+                    verse_chords = online_chords[:half] if half >= 2 else online_chords
+                    chorus_chords = online_chords[half:] if half >= 2 else online_chords
+                    detected_chords = {
                         "verse": verse_chords,
                         "chorus": chorus_chords
-                    },
-                    "genre": genre,
-                    "chord_progression": chord_progression
-                }
-                return expand_chord_plan_to_midi(plan, duration_minutes)
+                    }
+                    detected_style = "pop"
     prompt = build_prompt(
         description=description,
         tempo_bpm=tempo_bpm,
@@ -1350,6 +1325,12 @@ def generate_midi_json(
             plan["genre"] = genre
             plan["chord_progression"] = chord_progression
             
+            # 事前に検出されたコード進行をマージ
+            if detected_chords:
+                plan["custom_chords"] = detected_chords
+                if detected_style and not plan.get("style"):
+                    plan["style"] = detected_style
+            
             # 展開処理の実行
             composition = expand_chord_plan_to_midi(plan, duration_minutes)
             return composition
@@ -1363,9 +1344,11 @@ def generate_midi_json(
     default_plan = {
         "tempo_bpm": tempo_bpm,
         "key_mode": key_mode,
-        "style": "lofi",
+        "style": detected_style or "lofi",
         "instruments": ["piano", "guitar", "bass", "drums"],
         "genre": genre,
         "chord_progression": chord_progression
     }
+    if detected_chords:
+        default_plan["custom_chords"] = detected_chords
     return expand_chord_plan_to_midi(default_plan, duration_minutes)

@@ -70,6 +70,7 @@ def test_dsl_midi_generation():
 
 def test_local_song_database_matching():
     client = MagicMock()
+    client.generate.return_value = '{"tempo_bpm": 128, "key_mode": "major", "style": "edm", "instruments": {"piano": 1.0, "guitar": 0.5, "bass": 1.0, "drums": 1.0}}'
     composition = generate_midi_json(
         client=client,
         description="Arrange Oasis's Live Forever in EDM style",
@@ -78,11 +79,12 @@ def test_local_song_database_matching():
         duration_minutes=1.0,
         genre="edm"
     )
-    client.generate.assert_not_called()
-    assert composition.tempo_bpm == 120
+    client.generate.assert_called_once()
+    assert composition.tempo_bpm == 128
 
 def test_online_song_chords_search_fallback():
     client = MagicMock()
+    client.generate.return_value = '{"tempo_bpm": 80, "key_mode": "major", "style": "pop", "instruments": {"piano": 1.0, "guitar": 1.0, "bass": 1.0, "drums": 1.0}}'
     with patch("app.composer.prompt_builder.search_chords_online") as mock_search:
         mock_search.return_value = ["C", "G", "Am", "F"]
         composition = generate_midi_json(
@@ -94,7 +96,7 @@ def test_online_song_chords_search_fallback():
             genre="pop"
         )
         mock_search.assert_called_once_with("Adele's Someone Like You")
-        client.generate.assert_not_called()
+        client.generate.assert_called_once()
         assert composition.tempo_bpm == 80
 
 def test_detect_hardware_spec_llms():
