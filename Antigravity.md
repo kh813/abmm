@@ -106,3 +106,9 @@
 - [x] 9.6 ビルドパッケージの整合性テストおよびインストール検証（テストコードまたは確認スクリプトの実行）
 - [x] 9.7 エラーがあれば修正し、git commit を実行する
 
+### Phase 10: 代表的OSSモデル・ライブラリの評価と取り入れ
+- [x] 10.1 MIDI生成・アレンジおよび音響合成の代表的OSSモデル（FIGARO, MidiTok, Google Magenta, DDSP, Meta MusicGen, DiffSinger）の適合性調査
+- [x] 10.2 軽量Pythonライブラリ `MidiTok` を [requirements.txt](file:///Users/hiroshi/dev/abmm/requirements.txt) に追加し標準ツールキット化
+- [x] 10.3 [abmm-spec.md](file:///Users/hiroshi/dev/abmm/abmm-spec.md) に「10.7 代表的オープンソースモデル・ライブラリの適合性評価と採用方針」を明記
+- [x] 10.4 テストスイートの実行および既存機能との互換性確認
+
