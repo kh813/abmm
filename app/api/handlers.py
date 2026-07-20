@@ -380,8 +380,48 @@ class WebviewApi:
             return {"status": "error", "message": str(e)}
 
     def check_ollama_status(self):
-        """Ollamaの接続状況とモデル一覧を取得する"""
-        return self.llm_client.check_status()
+        """Ollamaの接続状況とモデル一覧を取得する。未起動の場合は自動起動を試行。"""
+        status = self.llm_client.check_status()
+        if not status.get("running"):
+            # Ollama が停止している場合、macOS 上で自動起動を試みる
+            self.try_launch_ollama()
+            import time
+            time.sleep(1.0)
+            status = self.llm_client.check_status()
+        return status
+
+    def try_launch_ollama(self):
+        """macOS 上で Ollama アプリの自動起動を試みる"""
+        import subprocess
+        try:
+            subprocess.Popen(["open", "-a", "Ollama"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        except Exception as e:
+            print(f"[handlers] Failed to launch Ollama app: {e}")
+
+    def launch_or_download_ollama(self):
+        """Ollamaを自動起動、または未インストールの場合はダウンロードページを開く"""
+        import webbrowser
+        import subprocess
+        
+        status = self.llm_client.check_status()
+        if status.get("running"):
+            return {"status": "already_running"}
+
+        self.try_launch_ollama()
+        import time
+        time.sleep(1.5)
+        
+        status = self.llm_client.check_status()
+        if status.get("running"):
+            return {"status": "success"}
+
+        # ブラウザで Ollama ダウンロードページを開く
+        try:
+            webbrowser.open("https://ollama.com/download")
+            return {"status": "opened_download_page"}
+        except Exception as e:
+            return {"status": "error", "message": str(e)}
+
 
     def start_ollama_model_download(self, model_name):
         """非同期でOllamaのモデルダウンロードを開始する"""

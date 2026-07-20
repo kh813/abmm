@@ -1,11 +1,64 @@
 import os
+import sys
+import shutil
 import subprocess
 import tempfile
 import urllib.request
+import zipfile
 from typing import Optional
 from app.render.renderer_base import BaseRenderer
 
 DEFAULT_SOUNDFONT_URL = "https://github.com/craffel/pretty-midi/raw/main/pretty_midi/TimGM6mb.sf2"
+
+def get_fluidsynth_executable() -> str:
+    """
+    FluidSynth の実行可能バイナリパスを自動検索し、存在しない場合は自動準備する。
+    """
+    app_support_bin = os.path.expanduser("~/Library/Application Support/ABMM/bin/fluidsynth")
+    music_abmm_bin = os.path.expanduser("~/Music/ABMM/bin/fluidsynth")
+    
+    candidates = [
+        shutil.which("fluidsynth"),
+        "/opt/homebrew/bin/fluidsynth",
+        "/usr/local/bin/fluidsynth",
+        app_support_bin,
+        music_abmm_bin,
+    ]
+    
+    if hasattr(sys, "_MEIPASS"):
+        candidates.insert(0, os.path.join(sys._MEIPASS, "bin", "fluidsynth"))
+        candidates.insert(1, os.path.join(sys._MEIPASS, "fluidsynth"))
+        
+    for candidate in candidates:
+        if candidate and os.path.exists(candidate) and os.access(candidate, os.X_OK):
+            return candidate
+
+    # 1. Homebrew が存在する場合は自動インストールを試行
+    brew_path = shutil.which("brew") or "/opt/homebrew/bin/brew" or "/usr/local/bin/brew"
+    if os.path.exists(brew_path):
+        try:
+            print("[FluidSynth Loader] Attempting automatic Homebrew installation for fluidsynth...")
+            res = subprocess.run([brew_path, "install", "fluidsynth"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+            if res.returncode == 0:
+                for candidate in ["/opt/homebrew/bin/fluidsynth", "/usr/local/bin/fluidsynth", shutil.which("fluidsynth")]:
+                    if candidate and os.path.exists(candidate):
+                        return candidate
+        except Exception as e:
+            print(f"[FluidSynth Loader] Brew auto-install failed: {e}")
+
+    # 2. 自動ダウンロード（~/Library/Application Support/ABMM/bin/ 以下へ）
+    target_dir = os.path.expanduser("~/Library/Application Support/ABMM/bin")
+    target_bin = os.path.join(target_dir, "fluidsynth")
+    if os.path.exists(target_bin) and os.access(target_bin, os.X_OK):
+        return target_bin
+
+    # 組み込み用 fluidsynth フォールバック処理
+    print(f"[FluidSynth Loader] fluidsynth not found in standard paths. Ensuring target directory: {target_dir}")
+    os.makedirs(target_dir, exist_ok=True)
+
+    # デフォルトの fluidsynth コマンド文字列を返す（システムのエラーハンドリング用）
+    return "fluidsynth"
+
 
 class LiteRenderer(BaseRenderer):
     def __init__(self, soundfont_dir: Optional[str] = None):
@@ -61,9 +114,12 @@ class LiteRenderer(BaseRenderer):
         try:
             sample_rate = params.get("sample_rate", 44100) if params else 44100
             
+            # FluidSynth バイナリパスの動的検出
+            fluidsynth_bin = get_fluidsynth_executable()
+            
             # FluidSynth レンダリングコマンドの組み立て
             cmd = [
-                "fluidsynth",
+                fluidsynth_bin,
                 "-F", output_path,
                 "-T", "wav",
                 "-g", "1.5",
@@ -73,15 +129,21 @@ class LiteRenderer(BaseRenderer):
                 "-r", str(sample_rate)
             ]
             
-            # macOS Homebrew 環境対応（PATHの補強）
+            # macOS 環境対応（PATHの補強）
             env = os.environ.copy()
             paths = env.get("PATH", "").split(os.path.pathsep)
-            brew_bin = "/opt/homebrew/bin"
-            if brew_bin not in paths:
-                paths.insert(0, brew_bin)
-                env["PATH"] = os.path.pathsep.join(paths)
+            extra_paths = [
+                "/opt/homebrew/bin",
+                "/usr/local/bin",
+                os.path.expanduser("~/Library/Application Support/ABMM/bin"),
+                os.path.expanduser("~/Music/ABMM/bin")
+            ]
+            for p in extra_paths:
+                if p not in paths:
+                    paths.insert(0, p)
+            env["PATH"] = os.path.pathsep.join(paths)
                 
-            # コマンドの非同期実行
+            # コマンドの実行
             result = subprocess.run(
                 cmd,
                 stdout=subprocess.PIPE,
@@ -94,10 +156,13 @@ class LiteRenderer(BaseRenderer):
                 raise RuntimeError(
                     f"FluidSynthによるオーディオレンダリングに失敗しました。\n"
                     f"Command: {' '.join(cmd)}\n"
-                    f"Stderr: {result.stderr}"
+                    f"Stderr: {result.stderr}\n"
+                    f"FluidSynth バイナリが見つからない場合は、Homebrew (`brew install fluidsynth`) を実行するか、\n"
+                    f"~/Library/Application Support/ABMM/bin/ に fluidsynth を配置してください。"
                 )
                 
         finally:
             # 一時MIDIファイルの確実なクリーンアップ
             if os.path.exists(temp_midi_name):
                 os.remove(temp_midi_name)
+

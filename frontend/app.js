@@ -620,7 +620,25 @@ document.addEventListener("DOMContentLoaded", () => {
       if (!status.running) {
         ollamaConnected = false;
         ollamaIndicator.textContent = "🔴";
-        ollamaStatusText.textContent = "Ollamaが起動していません。";
+        ollamaStatusText.innerHTML = 'Ollamaが起動していません。 <button id="auto-launch-ollama-btn" style="margin-left:8px; padding:2px 8px; font-size:12px; cursor:pointer;">Ollamaを起動 / 入手</button>';
+        
+        const launchBtn = document.getElementById("auto-launch-ollama-btn");
+        if (launchBtn) {
+          launchBtn.onclick = async () => {
+            if (pywebview.api && pywebview.api.launch_or_download_ollama) {
+              launchBtn.textContent = "起動処理中...";
+              const res = await pywebview.api.launch_or_download_ollama();
+              if (res.status === "opened_download_page") {
+                alert("Ollamaが未インストールのようです。ブラウザで公式ダウンロードページを開きました。インストーラーからインストールしてください。");
+              } else if (res.status === "success" || res.status === "already_running") {
+                setTimeout(checkOllamaStatus, 1000);
+              } else {
+                setTimeout(checkOllamaStatus, 2000);
+              }
+            }
+          };
+        }
+
         modelSelectionRow.classList.add("hidden");
         modelDownloadBar.classList.add("hidden");
         modelDownloadBtn.classList.add("hidden");
